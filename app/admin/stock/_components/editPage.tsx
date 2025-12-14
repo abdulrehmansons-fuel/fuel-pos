@@ -14,7 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useForm, Controller, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -38,7 +38,6 @@ type StockEditData = {
 
 const StockEdit = ({ data }: { data: StockEditData }) => {
   const router = useRouter();
-  const { toast } = useToast();
 
   const {
     register,
@@ -76,10 +75,7 @@ const StockEdit = ({ data }: { data: StockEditData }) => {
   const onSubmit = (formData: StockEditFormData) => {
     console.log("Updated Stock Data:", formData);
 
-    toast({
-      title: "Stock Purchase Updated",
-      description: `${formData.fuelType} purchase has been updated successfully.`,
-    });
+    toast.success(`${formData.fuelType} purchase has been updated successfully.`);
 
     setTimeout(() => router.push("/admin/stock"), 1000);
   };

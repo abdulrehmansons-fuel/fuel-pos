@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -23,27 +23,48 @@ import { Badge } from "@/components/ui/badge";
 import { Search, Plus, Fuel, CheckCircle, XCircle } from "lucide-react";
 
 interface FuelPump {
-    id: string;
+    id: string; // db _id
     name: string;
     location: string;
     status: "Active" | "Inactive";
     totalNozzles: number;
 }
 
-const mockFuelPumps: FuelPump[] = [
-    { id: "FP-001", name: "Pump Station A", location: "Main Entrance", status: "Active", totalNozzles: 4 },
-    { id: "FP-002", name: "Pump Station B", location: "East Wing", status: "Active", totalNozzles: 6 },
-    { id: "FP-003", name: "Pump Station C", location: "West Wing", status: "Inactive", totalNozzles: 4 },
-    { id: "FP-004", name: "Pump Station D", location: "South Gate", status: "Active", totalNozzles: 8 },
-    { id: "FP-005", name: "Pump Station E", location: "North Side", status: "Inactive", totalNozzles: 2 },
-    { id: "FP-006", name: "Pump Station F", location: "Central Area", status: "Active", totalNozzles: 6 },
-];
-
 const FuelPumps = () => {
+    const [pumps, setPumps] = useState<FuelPump[]>([]);
+    const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
     const [statusFilter, setStatusFilter] = useState("all");
 
-    const filteredPumps = mockFuelPumps.filter((pump) => {
+    useEffect(() => {
+        const fetchPumps = async () => {
+            try {
+                const res = await fetch("/api/fuel-pumps");
+                if (res.ok) {
+                    const data = await res.json();
+                    // Map API data
+                    const mappedData = data.map((pump: any) => ({
+                        id: pump._id,
+                        name: pump.pumpName,
+                        location: pump.location || "—",
+                        status: pump.status === "active" ? "Active" : "Inactive",
+                        totalNozzles: pump.totalNozzles
+                    }));
+                    setPumps(mappedData);
+                } else {
+                    console.error("Failed to fetch pumps");
+                }
+            } catch (error) {
+                console.error("Error fetching pumps:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchPumps();
+    }, []);
+
+
+    const filteredPumps = pumps.filter((pump) => {
         const matchesSearch =
             pump.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             pump.id.toLowerCase().includes(searchQuery.toLowerCase());
@@ -52,9 +73,9 @@ const FuelPumps = () => {
         return matchesSearch && matchesStatus;
     });
 
-    const totalPumps = mockFuelPumps.length;
-    const activePumps = mockFuelPumps.filter((p) => p.status === "Active").length;
-    const inactivePumps = mockFuelPumps.filter((p) => p.status === "Inactive").length;
+    const totalPumps = pumps.length;
+    const activePumps = pumps.filter((p) => p.status === "Active").length;
+    const inactivePumps = pumps.filter((p) => p.status === "Inactive").length;
 
     return (
         <div className="min-h-screen bg-[#f1f5f9]">
@@ -96,7 +117,7 @@ const FuelPumps = () => {
                         <div className="relative w-full sm:w-72">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#64748b]" />
                             <Input
-                                placeholder="Search fuel pump by name or ID"
+                                placeholder="Search fuel pump by name / ID"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 className="pl-10 rounded-md"
@@ -108,9 +129,7 @@ const FuelPumps = () => {
                             </SelectTrigger>
                             <SelectContent className="bg-white border rounded-md shadow-lg z-50">
                                 <SelectItem value="all">All</SelectItem>
-                                <SelectItem value="active">Active</
-
-                                SelectItem>
+                                <SelectItem value="active">Active</SelectItem>
                                 <SelectItem value="inactive">Inactive</SelectItem>
                             </SelectContent>
                         </Select>
@@ -137,37 +156,46 @@ const FuelPumps = () => {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {filteredPumps.map((pump) => (
-                                <TableRow key={pump.id} className="hover:bg-gray-100">
-                                    <TableCell className="font-medium text-[#020617]">{pump.id}</TableCell>
-                                    <TableCell className="text-[#020617]">{pump.name}</TableCell>
-                                    <TableCell className="text-[#64748b]">{pump.location}</TableCell>
-                                    <TableCell>
-                                        <Badge
-                                            className={
-                                                pump.status === "Active"
-                                                    ? "bg-green-100 text-green-700 hover:bg-green-100"
-                                                    : "bg-red-100 text-red-600 hover:bg-red-100"
-                                            }
-                                        >
-                                            {pump.status}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell className="text-[#020617]">{pump.totalNozzles}</TableCell>
-                                    <TableCell className="text-right">
-                                        <Link href={`/admin/FuelPumps/${pump.id}/view`}>
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                className="rounded-md"
-                                            >
-                                                View
-                                            </Button>
-                                        </Link>
+                            {loading ? (
+                                <TableRow>
+                                    <TableCell colSpan={6} className="text-center py-10">
+                                        <div className="flex justify-center items-center">
+                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#14b8a6]"></div>
+                                        </div>
                                     </TableCell>
                                 </TableRow>
-                            ))}
-                            {filteredPumps.length === 0 && (
+                            ) : filteredPumps.length > 0 ? (
+                                filteredPumps.map((pump) => (
+                                    <TableRow key={pump.id} className="hover:bg-gray-100">
+                                        <TableCell className="font-medium text-[#020617]">{pump.id.slice(-6).toUpperCase()}</TableCell>
+                                        <TableCell className="text-[#020617]">{pump.name}</TableCell>
+                                        <TableCell className="text-[#64748b]">{pump.location}</TableCell>
+                                        <TableCell>
+                                            <Badge
+                                                className={
+                                                    pump.status === "Active"
+                                                        ? "bg-green-100 text-green-700 hover:bg-green-100"
+                                                        : "bg-red-100 text-red-600 hover:bg-red-100"
+                                                }
+                                            >
+                                                {pump.status}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell className="text-[#020617]">{pump.totalNozzles}</TableCell>
+                                        <TableCell className="text-right">
+                                            <Link href={`/admin/FuelPumps/${pump.id}/view`}>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="rounded-md"
+                                                >
+                                                    View
+                                                </Button>
+                                            </Link>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            ) : (
                                 <TableRow>
                                     <TableCell colSpan={6} className="text-center py-8 text-[#64748b]">
                                         No fuel pumps found.

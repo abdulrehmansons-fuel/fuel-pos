@@ -39,10 +39,13 @@ const Employers = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [pumpFilter, setPumpFilter] = useState("All");
+  const [fuelPumps, setFuelPumps] = useState<string[]>([]);
 
   useEffect(() => {
-    const fetchEmployers = async () => {
+    const fetchMethods = async () => {
       try {
+        setLoading(true);
+        // 1. Fetch Employers
         const res = await fetch("/api/employers");
         if (res.ok) {
           const data = await res.json();
@@ -58,16 +61,22 @@ const Employers = () => {
             status: emp.status,
           }));
           setEmployers(mappedData);
-        } else {
-          console.error("Failed to fetch");
         }
+
+        // 2. Fetch Fuel Pumps for Filter
+        const pumpsRes = await fetch("/api/fuel-pumps");
+        if (pumpsRes.ok) {
+          const pumpsData = await pumpsRes.json();
+          setFuelPumps(pumpsData.map((p: any) => p.pumpName));
+        }
+
       } catch (error) {
-        console.error("Error fetching employers:", error);
+        console.error("Error fetching data:", error);
       } finally {
         setLoading(false);
       }
     };
-    fetchEmployers();
+    fetchMethods();
   }, []);
 
   const totalEmployers = employers.length;
@@ -152,8 +161,11 @@ const Employers = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="All">All Pumps</SelectItem>
-                <SelectItem value="Fuel Pump A">Fuel Pump A</SelectItem>
-                <SelectItem value="Fuel Pump B">Fuel Pump B</SelectItem>
+                {fuelPumps.map((pump) => (
+                  <SelectItem key={pump} value={pump}>
+                    {pump}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

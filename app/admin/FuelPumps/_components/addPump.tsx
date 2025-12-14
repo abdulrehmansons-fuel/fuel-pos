@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -15,23 +16,13 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowLeft } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { fuelPumpAddSchema, type FuelPumpAddFormData, PUMP_STATUS, FUEL_TYPE_OPTIONS } from "@/validators/fuelpump";
 
-const employeeOptions = [
-    { id: "emp-001", name: "Ahmed Khan" },
-    { id: "emp-002", name: "Ali Hassan" },
-    { id: "emp-003", name: "Bilal Ahmed" },
-    { id: "emp-004", name: "Usman Tariq" },
-    { id: "emp-005", name: "Faisal Malik" },
-];
-
 const AddFuelPump = () => {
     const router = useRouter();
-    const { toast } = useToast();
-
     const {
         register,
         handleSubmit,
@@ -45,18 +36,29 @@ const AddFuelPump = () => {
             status: undefined,
             totalNozzles: "",
             selectedFuelTypes: [],
-            selectedEmployees: [],
+            selectedEmployees: [], // Keeping default value to satisfy Typescript, but valid to send empty
             notes: "",
         },
     });
 
-    const onSubmit = (data: FuelPumpAddFormData) => {
-        console.log("Form Data:", data);
-        toast({
-            title: "Fuel Pump Added",
-            description: "The fuel pump has been added successfully.",
-        });
-        router.push("/admin/FuelPumps");
+    const onSubmit = async (data: FuelPumpAddFormData) => {
+        try {
+            const res = await fetch("/api/fuel-pumps", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data),
+            });
+
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.error || "Failed to add pump");
+            }
+
+            toast.success("Fuel pump added successfully!");
+            router.push("/admin/FuelPumps");
+        } catch (error: any) {
+            toast.error(error.message);
+        }
     };
 
     return (
@@ -193,46 +195,7 @@ const AddFuelPump = () => {
                         </div>
                     </div>
 
-                    {/* Section 3: Assigned Employees */}
-                    <div className="mt-6">
-                        <h2 className="text-sm font-medium text-[#64748b] uppercase tracking-wide mb-4">
-                            Assigned Employees (Optional)
-                        </h2>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                            <Controller
-                                name="selectedEmployees"
-                                control={control}
-                                render={({ field }) => (
-                                    <>
-                                        {employeeOptions.map((emp) => (
-                                            <div key={emp.id} className="flex items-center space-x-2">
-                                                <Checkbox
-                                                    id={emp.id}
-                                                    checked={field.value?.includes(emp.id)}
-                                                    onCheckedChange={(checked) => {
-                                                        const current = field.value || [];
-                                                        const updated = checked
-                                                            ? [...current, emp.id]
-                                                            : current.filter((val) => val !== emp.id);
-                                                        field.onChange(updated);
-                                                    }}
-                                                    className="border-[#64748b] data-[state=checked]:bg-[#14b8a6] data-[state=checked]:border-[#14b8a6]"
-                                                />
-                                                <Label
-                                                    htmlFor={emp.id}
-                                                    className="text-sm text-[#020617] cursor-pointer"
-                                                >
-                                                    {emp.name}
-                                                </Label>
-                                            </div>
-                                        ))}
-                                    </>
-                                )}
-                            />
-                        </div>
-                    </div>
-
-                    {/* Section 4: Notes */}
+                    {/* Section 3: Notes */}
                     <div className="mt-6">
                         <h2 className="text-sm font-medium text-[#64748b] uppercase tracking-wide mb-4">
                             Notes
@@ -260,9 +223,14 @@ const AddFuelPump = () => {
                         <Button
                             type="submit"
                             disabled={isSubmitting}
-                            className="bg-[#14b8a6] hover:bg-[#0d9488] text-white rounded-md"
+                            className="bg-[#14b8a6] hover:bg-[#0d9488] text-white rounded-md px-4 py-2"
                         >
-                            {isSubmitting ? "Adding..." : "Add Fuel Pump"}
+                            {isSubmitting ? (
+                                <>
+                                    <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></span>
+                                    Adding...
+                                </>
+                            ) : "Add Fuel Pump"}
                         </Button>
                     </div>
                 </form>

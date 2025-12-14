@@ -38,6 +38,7 @@ type EmployerData = {
 const EmployerEdit = ({ employerId }: { employerId: string }) => {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
+  const [fuelPumps, setFuelPumps] = useState<string[]>([]);
 
   const {
     register,
@@ -55,7 +56,7 @@ const EmployerEdit = ({ employerId }: { employerId: string }) => {
       mobile: "",
       address: "",
       status: "Active",
-      fuelPump: "Fuel Pump A",
+      fuelPump: "", // Default to empty, will be set from fetched data
       monthlySalary: "",
       advanceSalary: "",
       joiningDate: "",
@@ -64,8 +65,19 @@ const EmployerEdit = ({ employerId }: { employerId: string }) => {
   });
 
   useEffect(() => {
-    const fetchEmployer = async () => {
+    const fetchData = async () => {
       try {
+        setLoading(true);
+        // 1. Fetch Pumps
+        const pumpsRes = await fetch("/api/fuel-pumps");
+        let availablePumps: string[] = [];
+        if (pumpsRes.ok) {
+          const pumpsData = await pumpsRes.json();
+          availablePumps = pumpsData.map((p: any) => p.pumpName);
+          setFuelPumps(availablePumps);
+        }
+
+        // 2. Fetch Employer
         const res = await fetch(`/api/employers/${employerId}`);
         if (!res.ok) throw new Error("Failed to fetch employer");
         const data = await res.json();
@@ -79,6 +91,9 @@ const EmployerEdit = ({ employerId }: { employerId: string }) => {
           mobile: data.mobile,
           address: data.address || "",
           status: data.status,
+          // Check if current pump still exists, otherwise keep it (or maybe default to first available?)
+          // For now, we keep the data from DB even if not in list, but UI will only show if in list usually.
+          // But since we are filling the SelectItem from `fuelPumps`, we should ensure it matches.
           fuelPump: data.fuelPump,
           monthlySalary: data.monthlySalary.toString(),
           advanceSalary: data.advanceSalary?.toString() || "",
@@ -86,13 +101,13 @@ const EmployerEdit = ({ employerId }: { employerId: string }) => {
           notes: data.notes || "",
         });
       } catch (error) {
-        toast.error("Error loading employer details");
+        toast.error("Error loading data");
         console.error(error);
       } finally {
         setLoading(false);
       }
     };
-    if (employerId) fetchEmployer();
+    if (employerId) fetchData();
   }, [employerId, reset]);
 
   const onSubmit = async (formData: EmployerEditFormData) => {
@@ -261,7 +276,7 @@ const EmployerEdit = ({ employerId }: { employerId: string }) => {
                   name="status"
                   control={control}
                   render={({ field }) => (
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <SelectTrigger className="rounded-md">
                         <SelectValue placeholder="Select status" />
                       </SelectTrigger>
@@ -286,14 +301,20 @@ const EmployerEdit = ({ employerId }: { employerId: string }) => {
                   name="fuelPump"
                   control={control}
                   render={({ field }) => (
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <SelectTrigger className="rounded-md">
                         <SelectValue placeholder="Select fuel pump" />
                       </SelectTrigger>
                       <SelectContent>
-                        {FUEL_PUMPS.map((pump) => (
-                          <SelectItem key={pump} value={pump}>{pump}</SelectItem>
-                        ))}
+                        {fuelPumps.length === 0 ? (
+                          <p className="p-2 text-sm text-gray-500">No pumps available</p>
+                        ) : (
+                          fuelPumps.map((pump) => (
+                            <SelectItem key={pump} value={pump}>
+                              {pump}
+                            </SelectItem>
+                          ))
+                        )}
                       </SelectContent>
                     </Select>
                   )}

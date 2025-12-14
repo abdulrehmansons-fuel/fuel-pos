@@ -14,7 +14,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useForm, Controller, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -26,7 +26,6 @@ import {
 
 const AddStock = () => {
     const router = useRouter();
-    const { toast } = useToast();
 
     const {
         register,
@@ -64,10 +63,7 @@ const AddStock = () => {
     const onSubmit = (data: StockAddFormData) => {
         console.log("Stock Form Data:", data);
 
-        toast({
-            title: "Stock Purchase Added",
-            description: `${data.fuelType} purchase has been recorded.`,
-        });
+        toast.success(`${data.fuelType} purchase has been recorded.`);
 
         // Mock API delay
         setTimeout(() => router.push("/admin/stock"), 1000);

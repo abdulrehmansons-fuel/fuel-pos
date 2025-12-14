@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -27,7 +27,6 @@ import {
 
 const AddExpense = () => {
   const router = useRouter();
-  const { toast } = useToast();
 
   const {
     register,
@@ -50,10 +49,7 @@ const AddExpense = () => {
   const onSubmit = (data: ExpenseAddFormData) => {
     console.log("Form Data:", data);
     // Here you would typically make an API call
-    toast({
-      title: "Expense Added",
-      description: "Expense added successfully!",
-    });
+    toast.success("Expense added successfully!");
     router.push("/admin/expenses");
   };
 

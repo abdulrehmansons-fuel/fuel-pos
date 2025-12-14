@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -38,7 +38,6 @@ type ExpenseData = {
 
 const ExpenseEdit = ({ data }: { data: ExpenseData }) => {
   const router = useRouter();
-  const { toast } = useToast();
 
   const {
     register,
@@ -62,10 +61,7 @@ const ExpenseEdit = ({ data }: { data: ExpenseData }) => {
     console.log("Updated Data:", formData);
 
     // Mock update logic
-    toast({
-      title: "Expense Updated",
-      description: "Expense updated successfully!",
-    });
+    toast.success("Expense updated successfully!");
     router.push(`/admin/expenses/${data.id}/view`);
   };
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -15,61 +16,92 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowLeft } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { fuelPumpEditSchema, type FuelPumpEditFormData, PUMP_STATUS, FUEL_TYPE_OPTIONS } from "@/validators/fuelpump";
 
-const employeeOptions = [
-    { id: "emp-001", name: "Ahmed Khan" },
-    { id: "emp-002", name: "Ali Hassan" },
-    { id: "emp-003", name: "Bilal Ahmed" },
-    { id: "emp-004", name: "Usman Tariq" },
-    { id: "emp-005", name: "Faisal Malik" },
-];
-
-type FuelPumpEditData = {
-    id: string;
-    pumpName: string;
-    location: string;
-    status: "active" | "inactive";
-    totalNozzles: string;
-    fuelTypes: string[];
-    employeeIds: string[];
-    notes: string;
-};
-
-const FuelPumpEdit = ({ data }: { data: FuelPumpEditData }) => {
+const FuelPumpEdit = ({ pumpId }: { pumpId: string }) => {
     const router = useRouter();
-    const { toast } = useToast();
+    const [loading, setLoading] = useState(true);
 
     const {
         register,
         handleSubmit,
         control,
+        reset,
         formState: { errors, isSubmitting },
     } = useForm<FuelPumpEditFormData>({
         resolver: zodResolver(fuelPumpEditSchema),
         defaultValues: {
-            pumpName: data.pumpName,
-            location: data.location,
-            status: data.status,
-            totalNozzles: data.totalNozzles,
-            selectedFuelTypes: data.fuelTypes || [],
-            selectedEmployees: data.employeeIds || [],
-            notes: data.notes || "",
+            pumpName: "",
+            location: "",
+            status: undefined,
+            totalNozzles: "",
+            selectedFuelTypes: [],
+            selectedEmployees: [], // default
+            notes: "",
         },
     });
 
-    const onSubmit = (formData: FuelPumpEditFormData) => {
-        console.log("Updated Data:", formData);
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                // 1. Fetch Pump Details Only (Employees removed)
+                const pumpRes = await fetch(`/api/fuel-pumps/${pumpId}`);
+                if (!pumpRes.ok) {
+                    throw new Error("Failed to fetch fuel pump details");
+                }
+                const pump = await pumpRes.json();
 
-        toast({
-            title: "Fuel Pump Updated",
-            description: "The fuel pump has been updated successfully.",
-        });
-        router.push("/admin/FuelPumps");
+                // 2. Reset Form with Data
+                reset({
+                    pumpName: pump.pumpName,
+                    location: pump.location || "",
+                    status: pump.status,
+                    totalNozzles: String(pump.totalNozzles),
+                    selectedFuelTypes: pump.fuelProducts || [],
+                    selectedEmployees: pump.assignedEmployees || [], // Keep value if it exists but no UI
+                    notes: pump.notes || "",
+                });
+            } catch (error) {
+                console.error("Error loading data:", error);
+                toast.error("Failed to load fuel pump data.");
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        if (pumpId) fetchData();
+    }, [pumpId, reset]);
+
+    const onSubmit = async (formData: FuelPumpEditFormData) => {
+        try {
+            const res = await fetch(`/api/fuel-pumps/${pumpId}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(formData),
+            });
+
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.error || "Failed to update fuel pump");
+            }
+
+            toast.success("Fuel pump updated successfully.");
+            router.push("/admin/FuelPumps");
+        } catch (error: any) {
+            toast.error(error.message);
+        }
     };
+
+    if (loading) {
+        return (
+            <div className="flex h-screen w-full items-center justify-center bg-[#f1f5f9]">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#14b8a6]"></div>
+            </div>
+        );
+    }
 
     return (
         <div className="p-6 bg-[#f1f5f9] min-h-screen">
@@ -77,7 +109,7 @@ const FuelPumpEdit = ({ data }: { data: FuelPumpEditData }) => {
             <div className="flex items-center gap-3 mb-6">
                 <Button
                     variant="outline"
-                    onClick={() => router.push(`/admin/FuelPumps/${data.id}/view`)}
+                    onClick={() => router.push(`/admin/FuelPumps/${pumpId}/view`)}
                     className="rounded-md"
                 >
                     <ArrowLeft className="h-4 w-4 mr-2" />
@@ -131,7 +163,7 @@ const FuelPumpEdit = ({ data }: { data: FuelPumpEditData }) => {
                                     name="status"
                                     control={control}
                                     render={({ field }) => (
-                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                        <Select onValueChange={field.onChange} value={field.value}>
                                             <SelectTrigger className="bg-white border rounded-md">
                                                 <SelectValue placeholder="Select status" />
                                             </SelectTrigger>
@@ -205,46 +237,7 @@ const FuelPumpEdit = ({ data }: { data: FuelPumpEditData }) => {
                         </div>
                     </div>
 
-                    {/* Section 3: Assigned Employees */}
-                    <div className="mt-6">
-                        <h2 className="text-sm font-medium text-[#64748b] uppercase tracking-wide mb-4">
-                            Assigned Employees (Optional)
-                        </h2>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                            <Controller
-                                name="selectedEmployees"
-                                control={control}
-                                render={({ field }) => (
-                                    <>
-                                        {employeeOptions.map((emp) => (
-                                            <div key={emp.id} className="flex items-center space-x-2">
-                                                <Checkbox
-                                                    id={`edit-${emp.id}`}
-                                                    checked={field.value?.includes(emp.id)}
-                                                    onCheckedChange={(checked) => {
-                                                        const current = field.value || [];
-                                                        const updated = checked
-                                                            ? [...current, emp.id]
-                                                            : current.filter((val) => val !== emp.id);
-                                                        field.onChange(updated);
-                                                    }}
-                                                    className="border-[#64748b] data-[state=checked]:bg-[#14b8a6] data-[state=checked]:border-[#14b8a6]"
-                                                />
-                                                <Label
-                                                    htmlFor={`edit-${emp.id}`}
-                                                    className="text-sm text-[#020617] cursor-pointer"
-                                                >
-                                                    {emp.name}
-                                                </Label>
-                                            </div>
-                                        ))}
-                                    </>
-                                )}
-                            />
-                        </div>
-                    </div>
-
-                    {/* Section 4: Notes */}
+                    {/* Section 3: Notes */}
                     <div className="mt-6">
                         <h2 className="text-sm font-medium text-[#64748b] uppercase tracking-wide mb-4">
                             Notes
@@ -264,7 +257,7 @@ const FuelPumpEdit = ({ data }: { data: FuelPumpEditData }) => {
                         <Button
                             type="button"
                             variant="outline"
-                            onClick={() => router.push(`/admin/FuelPumps/${data.id}/view`)}
+                            onClick={() => router.push(`/admin/FuelPumps/${pumpId}/view`)}
                             className="rounded-md"
                         >
                             Cancel
@@ -272,9 +265,14 @@ const FuelPumpEdit = ({ data }: { data: FuelPumpEditData }) => {
                         <Button
                             type="submit"
                             disabled={isSubmitting}
-                            className="bg-[#14b8a6] hover:bg-[#0d9488] text-white rounded-md"
+                            className="bg-[#14b8a6] hover:bg-[#0d9488] text-white rounded-md px-4 py-2"
                         >
-                            Update Fuel Pump
+                            {isSubmitting ? (
+                                <>
+                                    <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></span>
+                                    Updating...
+                                </>
+                            ) : "Update Fuel Pump"}
                         </Button>
                     </div>
                 </form>

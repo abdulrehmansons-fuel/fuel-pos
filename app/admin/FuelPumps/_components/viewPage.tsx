@@ -1,12 +1,13 @@
 "use client";
 import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Edit } from "lucide-react";
 
 type FuelPumpData = {
-    id: string;
+    id: string; // db _id
     name: string;
     location: string;
     status: "Active" | "Inactive";
@@ -16,8 +17,50 @@ type FuelPumpData = {
     notes: string;
 };
 
-const FuelPumpView = ({ data }: { data: FuelPumpData }) => {
+const FuelPumpView = ({ pumpId }: { pumpId: string }) => {
     const router = useRouter();
+    const [data, setData] = useState<FuelPumpData | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchPump = async () => {
+            try {
+                const res = await fetch(`/api/fuel-pumps/${pumpId}`);
+                if (res.ok) {
+                    const pump = await res.json();
+                    setData({
+                        id: pump._id,
+                        name: pump.pumpName,
+                        location: pump.location || "—",
+                        status: pump.status === "active" ? "Active" : "Inactive",
+                        totalNozzles: pump.totalNozzles,
+                        fuelTypes: pump.fuelProducts || [],
+                        assignedEmployees: pump.assignedEmployees || [],
+                        notes: pump.notes || ""
+                    });
+                } else {
+                    console.error("Failed to fetch pump details");
+                }
+            } catch (error) {
+                console.error("Error fetching pump:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        if (pumpId) fetchPump();
+    }, [pumpId]);
+
+    if (loading) {
+        return (
+            <div className="flex h-screen w-full items-center justify-center bg-[#f1f5f9]">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#14b8a6]"></div>
+            </div>
+        );
+    }
+
+    if (!data) {
+        return <div className="p-6 text-center">Pump not found</div>;
+    }
 
     return (
         <div className="p-6 bg-[#f1f5f9] min-h-screen">
@@ -53,7 +96,7 @@ const FuelPumpView = ({ data }: { data: FuelPumpData }) => {
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                         <div>
                             <p className="text-xs uppercase text-[#64748b] mb-1">Pump ID</p>
-                            <p className="text-base font-semibold text-[#020617]">{data.id}</p>
+                            <p className="text-base font-semibold text-[#020617]">{data.id.slice(-6).toUpperCase()}</p>
                         </div>
                         <div>
                             <p className="text-xs uppercase text-[#64748b] mb-1">Pump Name</p>
@@ -91,20 +134,20 @@ const FuelPumpView = ({ data }: { data: FuelPumpData }) => {
                         <div>
                             <p className="text-xs uppercase text-[#64748b] mb-2">Fuel Types Available</p>
                             <div className="flex flex-wrap gap-2">
-                                {data.fuelTypes.map((fuel) => (
+                                {data.fuelTypes.length > 0 ? data.fuelTypes.map((fuel) => (
                                     <Badge
                                         key={fuel}
                                         className="bg-[#14b8a6]/10 text-[#14b8a6] hover:bg-[#14b8a6]/10"
                                     >
                                         {fuel}
                                     </Badge>
-                                ))}
+                                )) : "—"}
                             </div>
                         </div>
                         <div>
                             <p className="text-xs uppercase text-[#64748b] mb-2">Assigned Employees</p>
                             <div className="flex flex-wrap gap-2">
-                                {data.assignedEmployees.map((emp) => (
+                                {data.assignedEmployees.length > 0 ? data.assignedEmployees.map((emp) => (
                                     <Badge
                                         key={emp}
                                         variant="outline"
@@ -112,7 +155,7 @@ const FuelPumpView = ({ data }: { data: FuelPumpData }) => {
                                     >
                                         {emp}
                                     </Badge>
-                                ))}
+                                )) : "—"}
                             </div>
                         </div>
                     </div>

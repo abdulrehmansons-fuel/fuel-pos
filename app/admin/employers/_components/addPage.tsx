@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,14 +9,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { employerAddSchema, type EmployerAddFormData, EMPLOYER_STATUS, FUEL_PUMPS } from "@/validators/employer";
+import { employerAddSchema, type EmployerAddFormData, EMPLOYER_STATUS } from "@/validators/employer";
 
 const AddEmployer = () => {
   const router = useRouter();
-  const { toast } = useToast();
+  const [fuelPumps, setFuelPumps] = useState<string[]>([]);
 
   const {
     register,
@@ -38,6 +39,22 @@ const AddEmployer = () => {
     },
   });
 
+  useEffect(() => {
+    const fetchPumps = async () => {
+      try {
+        const res = await fetch("/api/fuel-pumps");
+        if (res.ok) {
+          const data = await res.json();
+          // Assuming pumpName is unique and what we want to display/store
+          setFuelPumps(data.map((p: any) => p.pumpName));
+        }
+      } catch (error) {
+        console.error("Failed to fetch pumps", error);
+      }
+    };
+    fetchPumps();
+  }, []);
+
   const onSubmit = async (data: EmployerAddFormData) => {
     try {
       const response = await fetch("/api/employers", {
@@ -51,17 +68,10 @@ const AddEmployer = () => {
         throw new Error(errorData.error || "Failed to add employer");
       }
 
-      toast({
-        title: "Success",
-        description: "Employer added successfully!",
-      });
+      toast.success("Employer added successfully!");
       router.push("/admin/employers");
     } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive"
-      });
+      toast.error(error.message);
     }
   };
 
@@ -215,11 +225,15 @@ const AddEmployer = () => {
                         <SelectValue placeholder="Select fuel pump" />
                       </SelectTrigger>
                       <SelectContent>
-                        {FUEL_PUMPS.map((pump) => (
-                          <SelectItem key={pump} value={pump}>
-                            {pump}
-                          </SelectItem>
-                        ))}
+                        {fuelPumps.length === 0 ? (
+                          <p className="p-2 text-sm text-gray-500">No pumps available</p>
+                        ) : (
+                          fuelPumps.map((pump) => (
+                            <SelectItem key={pump} value={pump}>
+                              {pump}
+                            </SelectItem>
+                          ))
+                        )}
                       </SelectContent>
                     </Select>
                   )}

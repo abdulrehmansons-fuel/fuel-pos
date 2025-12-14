@@ -41,10 +41,9 @@ export const employerAddSchema = z.object({
         invalid_type_error: 'Please select a valid status'
     }),
 
-    fuelPump: z.enum(FUEL_PUMPS, {
+    fuelPump: z.string({
         required_error: 'Fuel pump is required',
-        invalid_type_error: 'Please select a valid fuel pump'
-    }),
+    }).min(1, 'Fuel pump is required'),
 
     monthlySalary: z.string()
         .min(1, 'Monthly salary is required')
@@ -101,10 +100,9 @@ export const employerEditSchema = z.object({
         invalid_type_error: 'Please select a valid status'
     }),
 
-    fuelPump: z.enum(FUEL_PUMPS, {
+    fuelPump: z.string({
         required_error: 'Fuel pump is required',
-        invalid_type_error: 'Please select a valid fuel pump'
-    }),
+    }).min(1, 'Fuel pump is required'),
 
     monthlySalary: z.string()
         .min(1, 'Monthly salary is required')
