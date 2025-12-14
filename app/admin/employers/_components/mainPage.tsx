@@ -1,12 +1,11 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Search, Plus, Users, UserCheck, UserX } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-// ...existing code...
 import {
   Select,
   SelectContent,
@@ -23,9 +22,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-
 interface Employer {
-  id: string;
+  id: string; // Display ID (EMP-XXX)
+  _id: string; // Database ID
   name: string;
   email: string;
   phone: string;
@@ -34,70 +33,54 @@ interface Employer {
   status: "Active" | "Inactive";
 }
 
-const mockEmployers: Employer[] = [
-  {
-    id: "EMP-001",
-    name: "Ali Khan",
-    email: "ali@example.com",
-    phone: "+92 300 1234567",
-    salary: 30000,
-    fuelPump: "Fuel Pump A",
-    status: "Active",
-  },
-  {
-    id: "EMP-004",
-    name: "Saad Ahmed",
-    email: "saad@example.com",
-    phone: "+92 301 9876543",
-    salary: 25000,
-    fuelPump: "Fuel Pump B",
-    status: "Inactive",
-  },
-  {
-    id: "EMP-010",
-    name: "Sohail",
-    email: "sohail@example.com",
-    phone: "+92 333 5551234",
-    salary: 28500,
-    fuelPump: "Fuel Pump A",
-    status: "Active",
-  },
-  {
-    id: "EMP-007",
-    name: "Hassan Raza",
-    email: "hassan@example.com",
-    phone: "+92 321 4567890",
-    salary: 32000,
-    fuelPump: "Fuel Pump B",
-    status: "Active",
-  },
-  {
-    id: "EMP-012",
-    name: "Bilal Mahmood",
-    email: "bilal@example.com",
-    phone: "+92 345 7891234",
-    salary: 27000,
-    fuelPump: "Fuel Pump A",
-    status: "Inactive",
-  },
-];
-
 const Employers = () => {
+  const [employers, setEmployers] = useState<Employer[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [pumpFilter, setPumpFilter] = useState("All");
 
-  const totalEmployers = mockEmployers.length;
-  const activeEmployers = mockEmployers.filter((e) => e.status === "Active").length;
-  const inactiveEmployers = mockEmployers.filter((e) => e.status === "Inactive").length;
+  useEffect(() => {
+    const fetchEmployers = async () => {
+      try {
+        const res = await fetch("/api/employers");
+        if (res.ok) {
+          const data = await res.json();
+          // Map API data to UI interface
+          const mappedData = data.map((emp: any) => ({
+            id: emp.employerId || emp._id, // Use custom ID if available, else fallback
+            _id: emp._id, // Keep real _id for links
+            name: emp.fullName,
+            email: emp.email,
+            phone: emp.mobile,
+            salary: emp.monthlySalary,
+            fuelPump: emp.fuelPump,
+            status: emp.status,
+          }));
+          setEmployers(mappedData);
+        } else {
+          console.error("Failed to fetch");
+        }
+      } catch (error) {
+        console.error("Error fetching employers:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchEmployers();
+  }, []);
 
-  const filteredEmployers = mockEmployers.filter((employer) => {
+  const totalEmployers = employers.length;
+  const activeEmployers = employers.filter((e) => e.status.toLowerCase() === "active").length;
+  const inactiveEmployers = employers.filter((e) => e.status.toLowerCase() === "inactive").length;
+
+  const filteredEmployers = employers.filter((employer) => {
     const matchesSearch =
       employer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       employer.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
       employer.email.toLowerCase().includes(searchQuery.toLowerCase());
 
-    const matchesStatus = statusFilter === "All" || employer.status === statusFilter;
+    const matchesStatus = statusFilter === "All" || employer.status.toLowerCase() === statusFilter.toLowerCase();
     const matchesPump = pumpFilter === "All" || employer.fuelPump === pumpFilter;
 
     return matchesSearch && matchesStatus && matchesPump;
@@ -106,7 +89,6 @@ const Employers = () => {
   return (
     <div className="min-h-screen bg-[#f1f5f9]">
       <div className="container mx-auto p-6">
-
         {/* Summary Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
           <Card className="bg-white border shadow-sm rounded-xl">
@@ -201,9 +183,17 @@ const Employers = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredEmployers.length > 0 ? (
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-10">
+                      <div className="flex justify-center items-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#14b8a6]"></div>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : filteredEmployers.length > 0 ? (
                   filteredEmployers.map((employer) => (
-                    <TableRow key={employer.id} className="hover:bg-gray-100">
+                    <TableRow key={employer._id} className="hover:bg-gray-100">
                       <TableCell className="text-sm text-[#020617] font-medium">{employer.id}</TableCell>
                       <TableCell className="text-sm text-[#020617]">{employer.name}</TableCell>
                       <TableCell className="text-sm text-[#64748b]">{employer.email}</TableCell>
@@ -214,9 +204,9 @@ const Employers = () => {
                       <TableCell className="text-sm text-[#64748b]">{employer.fuelPump}</TableCell>
                       <TableCell>
                         <Badge
-                          variant={employer.status === "Active" ? "default" : "secondary"}
+                          variant={employer.status.toLowerCase() === "active" ? "default" : "secondary"}
                           className={
-                            employer.status === "Active"
+                            employer.status.toLowerCase() === "active"
                               ? "bg-[#14b8a6]/10 text-[#14b8a6] hover:bg-[#14b8a6]/10"
                               : "bg-red-100 text-red-600 hover:bg-red-100"
                           }
@@ -225,7 +215,7 @@ const Employers = () => {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Link href={`/admin/employers/${employer.id}/view`}>
+                        <Link href={`/admin/employers/${employer._id}/view`}>
                           <Button variant="outline" size="sm" className="rounded-md">
                             View
                           </Button>

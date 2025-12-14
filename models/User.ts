@@ -12,6 +12,7 @@ export interface IUser extends Document {
     status: 'Active' | 'Inactive';
 
     // Employee specific fields
+    employerId?: string;
     address?: string;
     fuelPump?: string;
     monthlySalary?: number;
@@ -49,9 +50,10 @@ const UserSchema: Schema<IUser> = new Schema({
     },
     email: {
         type: String,
+        required: [true, 'Please provide an email address'],
+        unique: true,
         trim: true,
         lowercase: true,
-        sparse: true, // Allow null/undefined to be unique if multiple users have no email (though we might enforce it)
         match: [/^\S+@\S+\.\S+$/, 'Please use a valid email address']
     },
     mobile: {
@@ -65,6 +67,7 @@ const UserSchema: Schema<IUser> = new Schema({
     },
 
     // Employee Specific Fields
+    employerId: { type: String, unique: true, sparse: true },
     address: { type: String },
     fuelPump: { type: String },
     monthlySalary: { type: Number },

@@ -38,14 +38,31 @@ const AddEmployer = () => {
     },
   });
 
-  const onSubmit = (data: EmployerAddFormData) => {
-    console.log("Form Data:", data);
-    // Here you would typically make an API call
-    toast({
-      title: "Success",
-      description: "Employer added successfully!",
-    });
-    router.push("/admin/employers");
+  const onSubmit = async (data: EmployerAddFormData) => {
+    try {
+      const response = await fetch("/api/employers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to add employer");
+      }
+
+      toast({
+        title: "Success",
+        description: "Employer added successfully!",
+      });
+      router.push("/admin/employers");
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
   };
 
   return (
@@ -246,6 +263,7 @@ const AddEmployer = () => {
                   id="joiningDate"
                   type="date"
                   className="rounded-md"
+                  max={new Date().toISOString().split('T')[0]}
                   {...register("joiningDate")}
                 />
                 {errors.joiningDate && (
@@ -289,7 +307,14 @@ const AddEmployer = () => {
               disabled={isSubmitting}
               className="bg-[#14b8a6] hover:bg-[#0d9488] text-white rounded-md px-4 py-2"
             >
-              {isSubmitting ? "Adding..." : "Add Employer"}
+              {isSubmitting ? (
+                <>
+                  <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></span>
+                  Adding...
+                </>
+              ) : (
+                "Add Employer"
+              )}
             </Button>
           </div>
         </form>

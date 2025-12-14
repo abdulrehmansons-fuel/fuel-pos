@@ -1,12 +1,14 @@
 "use client";
 import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
 type EmployerData = {
-  employerId: string;
+  employerId: string; // Database ID
+  displayId?: string; // Custom ID (EMP-XXX)
   fullName: string;
   email: string;
   mobile: string;
@@ -19,9 +21,53 @@ type EmployerData = {
   notes?: string;
 };
 
-const EmployerView = ({ data }: { data: EmployerData }) => {
+const EmployerView = ({ employerId }: { employerId: string }) => {
   const router = useRouter();
-  const employer = data;
+  const [employer, setEmployer] = useState<EmployerData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchEmployer = async () => {
+      try {
+        const res = await fetch(`/api/employers/${employerId}`);
+        if (!res.ok) throw new Error("Failed to fetch");
+        const data = await res.json();
+
+        // Map API response to UI model
+        setEmployer({
+          employerId: data._id,
+          displayId: data.employerId, // Use custom ID if available
+          fullName: data.fullName,
+          email: data.email,
+          mobile: data.mobile,
+          address: data.address || "",
+          fuelPump: data.fuelPump,
+          status: data.status.toLowerCase(),
+          salary: data.monthlySalary.toString(),
+          advanceSalary: data.advanceSalary?.toString() || "",
+          joiningDate: data.joiningDate,
+          notes: data.notes || ""
+        });
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    if (employerId) fetchEmployer();
+  }, [employerId]);
+
+  if (loading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-[#f1f5f9]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#14b8a6]"></div>
+      </div>
+    );
+  }
+
+  if (!employer) {
+    return <div>Employer not found</div>;
+  }
 
   return (
     <div className="p-6 bg-[#f1f5f9] min-h-screen">
@@ -60,7 +106,7 @@ const EmployerView = ({ data }: { data: EmployerData }) => {
                 Employer ID
               </span>
               <span className="text-base text-[#020617] font-semibold">
-                {employer.employerId}
+                {employer.displayId || employer.employerId.slice(-6).toUpperCase()}
               </span>
             </div>
 
@@ -96,7 +142,7 @@ const EmployerView = ({ data }: { data: EmployerData }) => {
                 Address
               </span>
               <span className="text-base text-[#020617] font-semibold">
-                {employer.address}
+                {employer.address || "—"}
               </span>
             </div>
           </div>
@@ -118,21 +164,6 @@ const EmployerView = ({ data }: { data: EmployerData }) => {
             </div>
 
             <div className="flex flex-col">
-              <span className="text-xs uppercase text-[#64748b] font-medium mb-1">
-                Status
-              </span>
-              <div className="mt-1">
-                <Badge
-                  variant="outline"
-                  className={
-                    employer.status === "active"
-                      ? "bg-[#14b8a6]/10 text-[#14b8a6] border-[#14b8a6]/20"
-                      : "bg-red-100 text-red-600 border-red-200"
-                  }
-                >
-                  {employer.status === "active" ? "Active" : "Inactive"}
-                </Badge>
-              </div>
             </div>
 
             <div className="flex flex-col">
@@ -140,7 +171,7 @@ const EmployerView = ({ data }: { data: EmployerData }) => {
                 Monthly Salary (Rs.)
               </span>
               <span className="text-base text-[#020617] font-semibold">
-                {employer.salary}
+                {Number(employer.salary).toLocaleString()}
               </span>
             </div>
 
@@ -149,7 +180,7 @@ const EmployerView = ({ data }: { data: EmployerData }) => {
                 Advance Salary (Rs.)
               </span>
               <span className="text-base text-[#020617] font-semibold">
-                {employer.advanceSalary || "—"}
+                {employer.advanceSalary ? Number(employer.advanceSalary).toLocaleString() : "—"}
               </span>
             </div>
 

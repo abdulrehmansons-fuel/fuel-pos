@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,58 +20,108 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { employerEditSchema, type EmployerEditFormData, EMPLOYER_STATUS, FUEL_PUMPS } from "@/validators/employer";
 
-// Helper type to map incoming data to form data
-// The incoming data might have different field names or types (e.g. salary vs monthlySalary)
-// We need to ensure we pass correct default values
 type EmployerData = {
+  _id: string;
   fullName: string;
   email: string;
-  username?: string;
-  password?: string;
+  username: string;
   mobile: string;
   address?: string;
-  fuelPump?: string;
+  fuelPump: string;
   status: string;
-  salary: string; // mapped to monthlySalary
-  advanceSalary?: string;
+  monthlySalary: number;
+  advanceSalary: number;
   joiningDate: string;
   notes?: string;
 };
 
-const EmployerEdit = ({ data }: { data: EmployerData }) => {
+const EmployerEdit = ({ employerId }: { employerId: string }) => {
   const router = useRouter();
+  const [loading, setLoading] = useState(true);
 
   const {
     register,
     handleSubmit,
     control,
+    reset,
     formState: { errors, isSubmitting },
   } = useForm<EmployerEditFormData>({
     resolver: zodResolver(employerEditSchema),
     defaultValues: {
-      fullName: data.fullName,
-      email: data.email,
-      username: data.username || "",
-      password: "", // Password typically empty on edit unless changing
-      mobile: data.mobile,
-      address: data.address || "",
-      status: data.status as any, // Cast or map if needed
-      fuelPump: data.fuelPump as any, // Cast or map if needed
-      monthlySalary: data.salary, // Map salary to monthlySalary
-      advanceSalary: data.advanceSalary || "",
-      joiningDate: data.joiningDate,
-      notes: data.notes || "",
+      fullName: "",
+      email: "",
+      username: "",
+      password: "",
+      mobile: "",
+      address: "",
+      status: "Active",
+      fuelPump: "Fuel Pump A",
+      monthlySalary: "",
+      advanceSalary: "",
+      joiningDate: "",
+      notes: "",
     },
   });
 
-  const onSubmit = (formData: EmployerEditFormData) => {
-    // Validation handled by handleSubmit
-    console.log("Updated Data:", formData);
+  useEffect(() => {
+    const fetchEmployer = async () => {
+      try {
+        const res = await fetch(`/api/employers/${employerId}`);
+        if (!res.ok) throw new Error("Failed to fetch employer");
+        const data = await res.json();
 
-    // Mock update logic
-    toast.success("Employer updated successfully!");
-    router.push("/admin/employers");
+        // Reset form with fetched data
+        reset({
+          fullName: data.fullName,
+          email: data.email,
+          username: data.username,
+          password: "",
+          mobile: data.mobile,
+          address: data.address || "",
+          status: data.status,
+          fuelPump: data.fuelPump,
+          monthlySalary: data.monthlySalary.toString(),
+          advanceSalary: data.advanceSalary?.toString() || "",
+          joiningDate: data.joiningDate ? new Date(data.joiningDate).toISOString().split('T')[0] : "",
+          notes: data.notes || "",
+        });
+      } catch (error) {
+        toast.error("Error loading employer details");
+        console.error(error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    if (employerId) fetchEmployer();
+  }, [employerId, reset]);
+
+  const onSubmit = async (formData: EmployerEditFormData) => {
+    try {
+      const res = await fetch(`/api/employers/${employerId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to update");
+      }
+
+      toast.success("Employer updated successfully!");
+      router.push("/admin/employers");
+    } catch (error: any) {
+      toast.error(error.message);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-[#f1f5f9]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#14b8a6]"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 bg-[#f1f5f9] min-h-screen">
@@ -93,7 +144,14 @@ const EmployerEdit = ({ data }: { data: EmployerData }) => {
           disabled={isSubmitting}
           className="bg-[#14b8a6] hover:bg-[#0d9488] text-white rounded-md px-4 py-2"
         >
-          {isSubmitting ? "Updating..." : "Update Employer"}
+          {isSubmitting ? (
+            <>
+              <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></span>
+              Updating...
+            </>
+          ) : (
+            "Update Employer"
+          )}
         </Button>
       </div>
 
@@ -299,6 +357,7 @@ const EmployerEdit = ({ data }: { data: EmployerData }) => {
                   id="joiningDate"
                   type="date"
                   className="rounded-md"
+                  max={new Date().toISOString().split('T')[0]}
                   {...register("joiningDate")}
                 />
                 {errors.joiningDate && (
@@ -337,13 +396,6 @@ const EmployerEdit = ({ data }: { data: EmployerData }) => {
               className="rounded-md"
             >
               Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={isSubmitting}
-              className="bg-[#14b8a6] hover:bg-[#0d9488] text-white rounded-md"
-            >
-              Update Employer
             </Button>
           </div>
         </form>

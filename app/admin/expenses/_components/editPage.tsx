@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { toast } from "sonner";
+import { useToast } from "@/hooks/use-toast";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -38,6 +38,7 @@ type ExpenseData = {
 
 const ExpenseEdit = ({ data }: { data: ExpenseData }) => {
   const router = useRouter();
+  const { toast } = useToast();
 
   const {
     register,
@@ -61,7 +62,10 @@ const ExpenseEdit = ({ data }: { data: ExpenseData }) => {
     console.log("Updated Data:", formData);
 
     // Mock update logic
-    toast.success("Expense updated successfully!");
+    toast({
+      title: "Expense Updated",
+      description: "Expense updated successfully!",
+    });
     router.push(`/admin/expenses/${data.id}/view`);
   };
 
@@ -160,6 +164,7 @@ const ExpenseEdit = ({ data }: { data: ExpenseData }) => {
                   id="date"
                   type="date"
                   className="rounded-md"
+                  max={new Date().toISOString().split('T')[0]}
                   {...register("date")}
                 />
                 {errors.date && (

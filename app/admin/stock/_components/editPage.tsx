@@ -221,6 +221,7 @@ const StockEdit = ({ data }: { data: StockEditData }) => {
                   id="purchaseDate"
                   type="date"
                   className="rounded-md"
+                  max={new Date().toISOString().split('T')[0]}
                   {...register("purchaseDate")}
                 />
                 {errors.purchaseDate && (
