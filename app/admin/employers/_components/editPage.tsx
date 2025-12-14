@@ -139,20 +139,6 @@ const EmployerEdit = ({ employerId }: { employerId: string }) => {
           </Button>
           <h1 className="text-xl font-semibold text-[#020617]">Edit Employer</h1>
         </div>
-        <Button
-          onClick={handleSubmit(onSubmit)}
-          disabled={isSubmitting}
-          className="bg-[#14b8a6] hover:bg-[#0d9488] text-white rounded-md px-4 py-2"
-        >
-          {isSubmitting ? (
-            <>
-              <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></span>
-              Updating...
-            </>
-          ) : (
-            "Update Employer"
-          )}
-        </Button>
       </div>
 
       {/* Form Card */}
@@ -396,6 +382,20 @@ const EmployerEdit = ({ employerId }: { employerId: string }) => {
               className="rounded-md"
             >
               Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              className="bg-[#14b8a6] hover:bg-[#0d9488] text-white rounded-md px-4 py-2"
+            >
+              {isSubmitting ? (
+                <>
+                  <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></span>
+                  Updating...
+                </>
+              ) : (
+                "Update Employer"
+              )}
             </Button>
           </div>
         </form>

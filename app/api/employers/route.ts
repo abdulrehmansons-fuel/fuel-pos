@@ -65,16 +65,46 @@ export async function POST(req: NextRequest) {
         }
 
         // 3. Generate Custom Employer ID (EMP-XXX)
-        const lastEmployee = await User.findOne({ role: "employee", employerId: { $exists: true } })
-            .sort({ employerId: -1 })
-            .collation({ locale: "en_US", numericOrdering: true }); // Ensure numeric sort, or rely on format
+        // 3. Generate Custom Employer ID (EMP-XXX)
+        // Find latest employee with an employerId, sorting by creation time descending if collation fails
+        // A safer way without relying on specific collation indexes is to fetch recent items and parse in code
+        // But for scalability, we try to sort by employerId.
+
+        const lastEmployee = await User.findOne({ role: "employee", employerId: { $ne: null } })
+            .sort({ $natural: -1 }) // Fallback to natural order or createdAt if employerId sort is unreliable without collation
+            .collation({ locale: "en_US", numericOrdering: true });
 
         let newId = "EMP-001";
         if (lastEmployee && lastEmployee.employerId) {
-            const lastIdNum = parseInt(lastEmployee.employerId.replace("EMP-", ""), 10);
-            if (!isNaN(lastIdNum)) {
-                newId = `EMP-${String(lastIdNum + 1).padStart(3, "0")}`;
-            }
+            // Extract number
+            const updateId = (idString: string) => {
+                const match = idString.match(/EMP-(\d+)/);
+                if (match) {
+                    const number = parseInt(match[1], 10);
+                    return `EMP-${String(number + 1).padStart(3, "0")}`;
+                }
+                return "EMP-001";
+            };
+            newId = updateId(lastEmployee.employerId);
+        } else {
+            // If collation failed to give us the MAX id, we might have got just A recent one. 
+            // Let's try to be safer: find one with max employerId by simple string sort (descending) as a backup check
+            // Note: String sort 'EMP-9' > 'EMP-10'. So this is tricky. 
+            // We stick to the collation attempt but ensure the query is simple.
+        }
+
+        // Revised simplified logic:
+        const employees = await User.find({ role: "employee", employerId: { $exists: true } })
+            .select("employerId")
+            .lean();
+
+        if (employees.length > 0) {
+            const maxId = employees.reduce((max, emp) => {
+                if (!emp.employerId) return max;
+                const num = parseInt(emp.employerId.replace("EMP-", ""), 10);
+                return isNaN(num) ? max : Math.max(max, num);
+            }, 0);
+            newId = `EMP-${String(maxId + 1).padStart(3, "0")}`;
         }
 
         // 4. Transform Data & Create User
