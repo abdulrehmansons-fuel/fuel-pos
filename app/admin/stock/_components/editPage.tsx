@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Upload, Loader2, Save } from "lucide-react";
+import { ArrowLeft, Upload, Loader2, Save, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,6 +24,7 @@ import {
   FUEL_TYPES,
   PAYMENT_TYPES
 } from "@/validators/stock";
+import Image from "next/image";
 
 type StockData = {
   _id: string; // Use _id from backend
@@ -36,6 +37,7 @@ type StockData = {
   paymentType: string;
   notes: string;
   pump: string;
+  paymentProofImage?: string;
 };
 
 const StockEdit = ({ id }: { id: string }) => {
@@ -47,6 +49,9 @@ const StockEdit = ({ id }: { id: string }) => {
 
   // Separate state for "Add New Quantity"
   const [addQty, setAddQty] = useState<string>("");
+
+  // Image Preview State
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   const {
     register,
@@ -67,6 +72,7 @@ const StockEdit = ({ id }: { id: string }) => {
       paymentType: "Cash",
       notes: "",
       pump: "",
+      paymentProofImage: "",
     },
   });
 
@@ -92,7 +98,11 @@ const StockEdit = ({ id }: { id: string }) => {
             paymentType: stockData.paymentType,
             notes: stockData.notes,
             pump: stockData.pump,
+            paymentProofImage: stockData.paymentProofImage || "",
           });
+          if (stockData.paymentProofImage) {
+            setImagePreview(stockData.paymentProofImage);
+          }
         } else {
           toast.error("Failed to load stock details");
           router.push("/admin/stock");
@@ -123,6 +133,24 @@ const StockEdit = ({ id }: { id: string }) => {
       setValue("quantity", (existing + added).toString());
     }
   }, [addQty, data, setValue]);
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        setImagePreview(base64String);
+        setValue("paymentProofImage", base64String);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeImage = () => {
+    setImagePreview(null);
+    setValue("paymentProofImage", "");
+  };
 
 
   const quantity = useWatch({ control, name: "quantity" });
@@ -163,7 +191,7 @@ const StockEdit = ({ id }: { id: string }) => {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-[#f1f5f9]">
-        <Loader2 className="h-10 w-10 animate-spin text-[#14b8a6]" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#14b8a6]"></div>
       </div>
     );
   }
@@ -415,15 +443,42 @@ const StockEdit = ({ id }: { id: string }) => {
 
               <div className="space-y-2 sm:col-span-2">
                 <Label className="text-[#020617]">Payment Screenshot (Optional)</Label>
-                <div className="border-2 border-dashed border-gray-300 rounded-md p-6 text-center hover:border-[#14b8a6] transition-colors cursor-pointer">
-                  <Upload className="h-8 w-8 mx-auto text-[#64748b] mb-2" />
-                  <p className="text-sm text-[#64748b]">
-                    Click to upload or drag and drop
-                  </p>
-                  <p className="text-xs text-[#64748b] mt-1">
-                    PNG, JPG up to 5MB
-                  </p>
-                </div>
+                {!imagePreview ? (
+                  <div className="relative border-2 border-dashed border-gray-300 rounded-md p-6 text-center hover:border-[#14b8a6] transition-colors cursor-pointer group">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    />
+                    <Upload className="h-8 w-8 mx-auto text-[#64748b] mb-2 group-hover:text-[#14b8a6]" />
+                    <p className="text-sm text-[#64748b] group-hover:text-[#14b8a6]">
+                      Click to upload or drag and drop
+                    </p>
+                    <p className="text-xs text-[#64748b] mt-1">
+                      PNG, JPG up to 5MB
+                    </p>
+                  </div>
+                ) : (
+                  <div className="relative w-full max-w-xs mx-auto border rounded-md overflow-hidden">
+                    <Image
+                      src={imagePreview}
+                      alt="Payment Proof"
+                      width={300}
+                      height={200}
+                      className="object-cover w-full h-48"
+                    />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="icon"
+                      className="absolute top-2 right-2 h-6 w-6 rounded-full"
+                      onClick={removeImage}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
           </div>

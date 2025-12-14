@@ -124,7 +124,7 @@ const ExpenseEdit = ({ id }: { id: string }) => {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-[#f1f5f9]">
-        <Loader2 className="h-10 w-10 animate-spin text-[#14b8a6]" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#14b8a6]"></div>
       </div>
     );
   }

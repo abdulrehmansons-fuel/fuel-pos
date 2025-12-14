@@ -59,6 +59,8 @@ export const stockAddSchema = z.object({
     pump: z.string().min(1, "Pump is required"),
 
     notes: z.string().optional(),
+
+    paymentProofImage: z.string().optional(), // Base64 string
 });
 
 // Edit stock schema (same as add for now)

@@ -1,7 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Upload } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ArrowLeft, Upload, Loader2, Save, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,14 +24,19 @@ import {
     FUEL_TYPES,
     PAYMENT_TYPES
 } from "@/validators/stock";
+import Image from "next/image";
 
 const AddStock = () => {
     const router = useRouter();
+    const [pumps, setPumps] = useState<{ _id: string, pumpName: string }[]>([]);
+    const [loadingPumps, setLoadingPumps] = useState(true);
+    const [imagePreview, setImagePreview] = useState<string | null>(null);
 
     const {
         register,
         handleSubmit,
         control,
+        setValue,
         formState: { errors, isSubmitting },
     } = useForm<StockAddFormData>({
         resolver: zodResolver(stockAddSchema),
@@ -39,12 +45,50 @@ const AddStock = () => {
             quantity: "",
             purchasePricePerLiter: "",
             salePricePerLiter: "",
-            purchaseDate: "",
+            purchaseDate: new Date().toISOString().split('T')[0],
             supplier: "",
             paymentType: undefined,
+            pump: undefined,
             notes: "",
+            paymentProofImage: "",
         },
     });
+
+    useEffect(() => {
+        const fetchPumps = async () => {
+            try {
+                const res = await fetch("/api/fuel-pumps");
+                if (res.ok) {
+                    const data = await res.json();
+                    setPumps(data);
+                }
+            } catch (error) {
+                console.error("Error fetching pumps:", error);
+                toast.error("Failed to load fuel pumps");
+            } finally {
+                setLoadingPumps(false);
+            }
+        };
+        fetchPumps();
+    }, []);
+
+    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                const base64String = reader.result as string;
+                setImagePreview(base64String);
+                setValue("paymentProofImage", base64String);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const removeImage = () => {
+        setImagePreview(null);
+        setValue("paymentProofImage", "");
+    };
 
     const quantity = useWatch({ control, name: "quantity" });
     const purchasePricePerLiter = useWatch({ control, name: "purchasePricePerLiter" });
@@ -60,13 +104,25 @@ const AddStock = () => {
             ? (parseFloat(quantity) * parseFloat(salePricePerLiter)).toFixed(2)
             : "0.00";
 
-    const onSubmit = (data: StockAddFormData) => {
-        console.log("Stock Form Data:", data);
+    const onSubmit = async (data: StockAddFormData) => {
+        try {
+            const res = await fetch("/api/stocks", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data),
+            });
 
-        toast.success(`${data.fuelType} purchase has been recorded.`);
-
-        // Mock API delay
-        setTimeout(() => router.push("/admin/stock"), 1000);
+            if (res.ok) {
+                toast.success(`${data.fuelType} purchase has been recorded.`);
+                router.push("/admin/stock");
+            } else {
+                const err = await res.json();
+                toast.error(err.error || "Failed to add stock");
+            }
+        } catch (error) {
+            console.error("Error adding stock:", error);
+            toast.error("An unexpected error occurred");
+        }
     };
 
     return (
@@ -115,6 +171,31 @@ const AddStock = () => {
                                 />
                                 {errors.fuelType && (
                                     <p className="text-sm text-red-500">{errors.fuelType.message}</p>
+                                )}
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="pump" className="text-[#020617]">
+                                    Pump / Station <span className="text-red-500">*</span>
+                                </Label>
+                                <Controller
+                                    name="pump"
+                                    control={control}
+                                    render={({ field }) => (
+                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                            <SelectTrigger className="rounded-md">
+                                                <SelectValue placeholder={loadingPumps ? "Loading..." : "Select pump"} />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {pumps.map((pump) => (
+                                                    <SelectItem key={pump._id} value={pump.pumpName}>{pump.pumpName}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    )}
+                                />
+                                {errors.pump && (
+                                    <p className="text-sm text-red-500">{errors.pump.message}</p>
                                 )}
                             </div>
 
@@ -264,15 +345,42 @@ const AddStock = () => {
 
                             <div className="space-y-2 sm:col-span-2">
                                 <Label className="text-[#020617]">Payment Screenshot (Optional)</Label>
-                                <div className="border-2 border-dashed border-gray-300 rounded-md p-6 text-center hover:border-[#14b8a6] transition-colors cursor-pointer">
-                                    <Upload className="h-8 w-8 mx-auto text-[#64748b] mb-2" />
-                                    <p className="text-sm text-[#64748b]">
-                                        Click to upload or drag and drop
-                                    </p>
-                                    <p className="text-xs text-[#64748b] mt-1">
-                                        PNG, JPG up to 5MB
-                                    </p>
-                                </div>
+                                {!imagePreview ? (
+                                    <div className="relative border-2 border-dashed border-gray-300 rounded-md p-6 text-center hover:border-[#14b8a6] transition-colors cursor-pointer group">
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={handleImageUpload}
+                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                        />
+                                        <Upload className="h-8 w-8 mx-auto text-[#64748b] mb-2 group-hover:text-[#14b8a6]" />
+                                        <p className="text-sm text-[#64748b] group-hover:text-[#14b8a6]">
+                                            Click to upload or drag and drop
+                                        </p>
+                                        <p className="text-xs text-[#64748b] mt-1">
+                                            PNG, JPG up to 5MB
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <div className="relative w-full max-w-xs mx-auto border rounded-md overflow-hidden">
+                                        <Image
+                                            src={imagePreview}
+                                            alt="Payment Proof"
+                                            width={300}
+                                            height={200}
+                                            className="object-cover w-full h-48"
+                                        />
+                                        <Button
+                                            type="button"
+                                            variant="destructive"
+                                            size="icon"
+                                            className="absolute top-2 right-2 h-6 w-6 rounded-full"
+                                            onClick={removeImage}
+                                        >
+                                            <X className="h-3 w-3" />
+                                        </Button>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -313,7 +421,17 @@ const AddStock = () => {
                             disabled={isSubmitting}
                             className="bg-[#14b8a6] hover:bg-[#0d9488] text-white rounded-md px-4 py-2"
                         >
-                            {isSubmitting ? "Adding..." : "Add Stock Purchase"}
+                            {isSubmitting ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Saving...
+                                </>
+                            ) : (
+                                <>
+                                    <Save className="mr-2 h-4 w-4" />
+                                    Add Stock Purchase
+                                </>
+                            )}
                         </Button>
                     </div>
                 </form>

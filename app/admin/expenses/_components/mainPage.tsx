@@ -205,7 +205,7 @@ const Expenses = () => {
                 <TableRow>
                   <TableCell colSpan={8} className="text-center py-10">
                     <div className="flex justify-center items-center">
-                      <Loader2 className="h-8 w-8 animate-spin text-[#14b8a6]" />
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#14b8a6]"></div>
                     </div>
                   </TableCell>
                 </TableRow>
