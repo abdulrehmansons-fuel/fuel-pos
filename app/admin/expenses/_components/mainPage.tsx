@@ -1,5 +1,5 @@
 "use client";
-import { useState, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,10 +19,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Search, Plus, Receipt, TrendingUp, DollarSign } from "lucide-react";
+import { Search, Plus, Receipt, TrendingUp, DollarSign, Loader2 } from "lucide-react";
+import { EXPENSE_TYPES } from "@/validators/expense";
 
 interface Expense {
-  id: string;
+  id: string; // Display ID (e.g. from DB _id or mapped)
+  _id: string; // Real DB ID
   name: string;
   type: string;
   amount: number;
@@ -31,91 +33,56 @@ interface Expense {
   notes: string;
 }
 
-// Mock expense data
-const mockExpenses: Expense[] = [
-  {
-    id: "EXP-001",
-    name: "Diesel Purchase",
-    type: "Fuel Purchase",
-    amount: 500000,
-    pump: "Fuel Pump A",
-    date: "2025-11-30",
-    notes: "Bulk diesel purchase for inventory",
-  },
-  {
-    id: "EXP-002",
-    name: "Employee Salaries",
-    type: "Salary Paid",
-    amount: 150000,
-    pump: "Fuel Pump A",
-    date: "2025-11-29",
-    notes: "Monthly salary payment",
-  },
-  {
-    id: "EXP-003",
-    name: "Pump Maintenance",
-    type: "Maintenance",
-    amount: 25000,
-    pump: "Fuel Pump B",
-    date: "2025-11-28",
-    notes: "Regular maintenance and repairs",
-  },
-  {
-    id: "EXP-004",
-    name: "Electricity Bill",
-    type: "Utility Bills",
-    amount: 18000,
-    pump: "Fuel Pump A",
-    date: "2025-11-27",
-    notes: "November electricity charges",
-  },
-  {
-    id: "EXP-005",
-    name: "Petrol Purchase",
-    type: "Fuel Purchase",
-    amount: 450000,
-    pump: "Fuel Pump B",
-    date: "2025-11-26",
-    notes: "Bulk petrol purchase",
-  },
-  {
-    id: "EXP-006",
-    name: "Cash Withdrawal",
-    type: "Cash Withdrawals",
-    amount: 100000,
-    pump: "Fuel Pump A",
-    date: "2025-11-25",
-    notes: "Cash for daily operations",
-  },
-  {
-    id: "EXP-007",
-    name: "Office Supplies",
-    type: "Miscellaneous",
-    amount: 8500,
-    pump: "Fuel Pump B",
-    date: "2025-11-24",
-    notes: "Stationery and office items",
-  },
-  {
-    id: "EXP-008",
-    name: "Water Bill",
-    type: "Utility Bills",
-    amount: 3500,
-    pump: "Fuel Pump A",
-    date: "2025-11-23",
-    notes: "November water charges",
-  },
-];
-
 const Expenses = () => {
-  // ...existing code...
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedType, setSelectedType] = useState("all");
   const [selectedPump, setSelectedPump] = useState("all");
+  const [fuelPumps, setFuelPumps] = useState<string[]>([]);
+
+  // Fetch Data
+  useEffect(() => {
+    const fetchMethods = async () => {
+      try {
+        setLoading(true);
+        // 1. Fetch Expenses
+        const expenseRes = await fetch("/api/expenses");
+        if (expenseRes.ok) {
+          const data = await expenseRes.json();
+          const mappedData = data.map((exp: any) => ({
+            id: exp._id.substring(0, 6).toUpperCase(), // Simulating a short ID
+            _id: exp._id,
+            name: exp.expenseTitle,
+            type: exp.expenseType,
+            amount: exp.amount,
+            pump: exp.pump,
+            date: exp.date,
+            notes: exp.notes || "—"
+          }));
+          setExpenses(mappedData);
+        }
+
+        // 2. Fetch Pumps for filter
+        const pumpsRes = await fetch("/api/fuel-pumps");
+        if (pumpsRes.ok) {
+          const pumpsData = await pumpsRes.json();
+          setFuelPumps(pumpsData.map((p: any) => p.pumpName));
+        }
+
+      } catch (error) {
+        console.error("Error fetching data", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMethods();
+  }, []);
 
   // Filter expenses
   const filteredExpenses = useMemo(() => {
-    return mockExpenses.filter((expense) => {
+    return expenses.filter((expense) => {
       const matchesSearch =
         searchQuery === "" ||
         expense.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -124,15 +91,15 @@ const Expenses = () => {
       const matchesPump = selectedPump === "all" || expense.pump === selectedPump;
       return matchesSearch && matchesType && matchesPump;
     });
-  }, [searchQuery, selectedType, selectedPump]);
+  }, [searchQuery, selectedType, selectedPump, expenses]);
 
   // Calculate summary metrics
-  const totalExpenses = mockExpenses.length;
-
+  const totalExpenses = expenses.length;
+  // Calculate today based on local time matching the stored date string format (YYYY-MM-DD from API if mapped correctly)
+  // API returns ISO date string (YYYY-MM-DDTHH:mm:ss.sssZ). We need to extract YYYY-MM-DD.
   const today = new Date().toISOString().split("T")[0];
-  const todayExpenses = mockExpenses.filter((exp) => exp.date === today).length;
-
-  const totalAmountSpent = mockExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+  const todayExpenses = expenses.filter((exp) => exp.date.startsWith(today)).length;
+  const totalAmountSpent = expenses.reduce((sum, exp) => sum + exp.amount, 0);
 
   return (
     <div className="p-6 bg-[#f1f5f9] min-h-screen">
@@ -190,12 +157,9 @@ const Expenses = () => {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="Fuel Purchase">Fuel Purchase</SelectItem>
-              <SelectItem value="Salary Paid">Salary Paid</SelectItem>
-              <SelectItem value="Maintenance">Maintenance</SelectItem>
-              <SelectItem value="Utility Bills">Utility Bills</SelectItem>
-              <SelectItem value="Cash Withdrawals">Cash Withdrawals</SelectItem>
-              <SelectItem value="Miscellaneous">Miscellaneous</SelectItem>
+              {EXPENSE_TYPES.map((type) => (
+                <SelectItem key={type} value={type}>{type}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
 
@@ -205,8 +169,9 @@ const Expenses = () => {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Pumps</SelectItem>
-              <SelectItem value="Fuel Pump A">Fuel Pump A</SelectItem>
-              <SelectItem value="Fuel Pump B">Fuel Pump B</SelectItem>
+              {fuelPumps.map((pump) => (
+                <SelectItem key={pump} value={pump}>{pump}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -236,7 +201,15 @@ const Expenses = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredExpenses.length === 0 ? (
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={8} className="text-center py-10">
+                    <div className="flex justify-center items-center">
+                      <Loader2 className="h-8 w-8 animate-spin text-[#14b8a6]" />
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : filteredExpenses.length === 0 ? (
                 <TableRow>
                   <TableCell
                     colSpan={8}
@@ -248,7 +221,7 @@ const Expenses = () => {
               ) : (
                 filteredExpenses.map((expense) => (
                   <TableRow
-                    key={expense.id}
+                    key={expense._id}
                     className="hover:bg-gray-50 border-b"
                   >
                     <TableCell className="text-sm font-medium text-[#020617]">
@@ -277,7 +250,7 @@ const Expenses = () => {
                       {expense.notes}
                     </TableCell>
                     <TableCell>
-                      <Link href={`/admin/expenses/${expense.id}/view`}>
+                      <Link href={`/admin/expenses/${expense._id}/view`}>
                         <Button
                           variant="outline"
                           size="sm"

@@ -47,10 +47,9 @@ export const expenseAddSchema = z.object({
             return !isNaN(selectedDate.getTime());
         }, 'Please enter a valid date'),
 
-    pump: z.enum(FUEL_PUMPS, {
+    pump: z.string({
         required_error: 'Pump is required',
-        invalid_type_error: 'Please select a valid pump'
-    }),
+    }).min(1, 'Pump is required'),
 
     paymentMethod: z.enum(PAYMENT_METHODS, {
         required_error: 'Payment method is required',

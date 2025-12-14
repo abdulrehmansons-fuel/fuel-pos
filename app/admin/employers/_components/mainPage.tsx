@@ -206,7 +206,7 @@ const Employers = () => {
                 ) : filteredEmployers.length > 0 ? (
                   filteredEmployers.map((employer) => (
                     <TableRow key={employer._id} className="hover:bg-gray-100">
-                      <TableCell className="text-sm text-[#020617] font-medium">{employer.id}</TableCell>
+                      <TableCell className="text-sm text-[#020617] font-medium">{employer.id.slice(-6).toUpperCase()}</TableCell>
                       <TableCell className="text-sm text-[#020617]">{employer.name}</TableCell>
                       <TableCell className="text-sm text-[#64748b]">{employer.email}</TableCell>
                       <TableCell className="text-sm text-[#64748b]">{employer.phone}</TableCell>

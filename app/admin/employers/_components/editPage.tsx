@@ -124,7 +124,7 @@ const EmployerEdit = ({ employerId }: { employerId: string }) => {
       }
 
       toast.success("Employer updated successfully!");
-      router.push("/admin/employers");
+      router.push(`/admin/employers/${employerId}/view`);
     } catch (error: any) {
       toast.error(error.message);
     }

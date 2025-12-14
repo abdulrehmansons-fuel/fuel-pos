@@ -4,7 +4,19 @@ import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Edit } from "lucide-react";
+import { ArrowLeft, Edit, Trash, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 type FuelPumpData = {
     id: string; // db _id
@@ -21,6 +33,7 @@ const FuelPumpView = ({ pumpId }: { pumpId: string }) => {
     const router = useRouter();
     const [data, setData] = useState<FuelPumpData | null>(null);
     const [loading, setLoading] = useState(true);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     useEffect(() => {
         const fetchPump = async () => {
@@ -39,16 +52,40 @@ const FuelPumpView = ({ pumpId }: { pumpId: string }) => {
                         notes: pump.notes || ""
                     });
                 } else {
-                    console.error("Failed to fetch pump details");
+                    toast.error("Failed to fetch pump details");
+                    router.push("/admin/FuelPumps");
                 }
             } catch (error) {
                 console.error("Error fetching pump:", error);
+                toast.error("An unexpected error occurred");
             } finally {
                 setLoading(false);
             }
         };
         if (pumpId) fetchPump();
-    }, [pumpId]);
+    }, [pumpId, router]);
+
+    const handleDelete = async () => {
+        try {
+            setIsDeleting(true);
+            const res = await fetch(`/api/fuel-pumps/${pumpId}`, {
+                method: "DELETE",
+            });
+
+            if (res.ok) {
+                toast.success("Fuel pump deleted successfully");
+                router.push("/admin/FuelPumps");
+            } else {
+                const errorData = await res.json();
+                toast.error(errorData.error || "Failed to delete fuel pump");
+            }
+        } catch (error) {
+            console.error("Error deleting fuel pump:", error);
+            toast.error("An unexpected error occurred");
+        } finally {
+            setIsDeleting(false);
+        }
+    };
 
     if (loading) {
         return (
@@ -77,13 +114,38 @@ const FuelPumpView = ({ pumpId }: { pumpId: string }) => {
                     </Button>
                     <h1 className="text-xl font-semibold text-[#020617]">Fuel Pump Details</h1>
                 </div>
-                <Button
-                    onClick={() => router.push(`/admin/FuelPumps/${data.id}/edit`)}
-                    className="bg-[#14b8a6] hover:bg-[#0d9488] text-white rounded-md"
-                >
-                    <Edit className="h-4 w-4 mr-2" />
-                    Edit
-                </Button>
+                <div className="flex items-center gap-2">
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="destructive" className="gap-2 rounded-md bg-red-600 hover:bg-red-700 text-white" disabled={isDeleting}>
+                                {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash className="h-4 w-4" />}
+                                Delete
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    This action cannot be undone. This will permanently delete this fuel pump from the database.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700 text-white">
+                                    Delete
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+
+                    <Button
+                        onClick={() => router.push(`/admin/FuelPumps/${data.id}/edit`)}
+                        className="bg-[#14b8a6] hover:bg-[#0d9488] text-white rounded-md"
+                    >
+                        <Edit className="h-4 w-4 mr-2" />
+                        Edit
+                    </Button>
+                </div>
             </div>
 
             {/* Details Card */}
@@ -140,20 +202,6 @@ const FuelPumpView = ({ pumpId }: { pumpId: string }) => {
                                         className="bg-[#14b8a6]/10 text-[#14b8a6] hover:bg-[#14b8a6]/10"
                                     >
                                         {fuel}
-                                    </Badge>
-                                )) : "—"}
-                            </div>
-                        </div>
-                        <div>
-                            <p className="text-xs uppercase text-[#64748b] mb-2">Assigned Employees</p>
-                            <div className="flex flex-wrap gap-2">
-                                {data.assignedEmployees.length > 0 ? data.assignedEmployees.map((emp) => (
-                                    <Badge
-                                        key={emp}
-                                        variant="outline"
-                                        className="border-[#64748b]/30 text-[#020617]"
-                                    >
-                                        {emp}
                                     </Badge>
                                 )) : "—"}
                             </div>

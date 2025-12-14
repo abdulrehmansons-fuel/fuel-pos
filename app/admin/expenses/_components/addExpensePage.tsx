@@ -1,7 +1,8 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,12 +22,32 @@ import {
   expenseAddSchema,
   type ExpenseAddFormData,
   EXPENSE_TYPES,
-  FUEL_PUMPS,
   PAYMENT_METHODS
 } from "@/validators/expense";
 
 const AddExpense = () => {
   const router = useRouter();
+  const [fuelPumps, setFuelPumps] = useState<string[]>([]);
+  const [loadingPumps, setLoadingPumps] = useState(true);
+
+  // Fetch Fuel Pumps
+  useEffect(() => {
+    const fetchPumps = async () => {
+      try {
+        const res = await fetch("/api/fuel-pumps");
+        if (res.ok) {
+          const data = await res.json();
+          setFuelPumps(data.map((p: any) => p.pumpName));
+        }
+      } catch (error) {
+        console.error("Error fetching pumps:", error);
+        toast.error("Failed to load fuel pumps");
+      } finally {
+        setLoadingPumps(false);
+      }
+    };
+    fetchPumps();
+  }, []);
 
   const {
     register,
@@ -46,11 +67,26 @@ const AddExpense = () => {
     },
   });
 
-  const onSubmit = (data: ExpenseAddFormData) => {
+  const onSubmit = async (data: ExpenseAddFormData) => {
     console.log("Form Data:", data);
-    // Here you would typically make an API call
-    toast.success("Expense added successfully!");
-    router.push("/admin/expenses");
+    try {
+      const res = await fetch("/api/expenses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+
+      if (res.ok) {
+        toast.success("Expense added successfully!");
+        router.push("/admin/expenses");
+      } else {
+        const errorData = await res.json();
+        toast.error(errorData.error || "Failed to add expense");
+      }
+    } catch (error) {
+      console.error("Error adding expense:", error);
+      toast.error("An unexpected error occurred");
+    }
   };
 
   return (
@@ -174,10 +210,10 @@ const AddExpense = () => {
                   render={({ field }) => (
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <SelectTrigger className="rounded-md">
-                        <SelectValue placeholder="Select pump" />
+                        <SelectValue placeholder={loadingPumps ? "Loading pumps..." : "Select pump"} />
                       </SelectTrigger>
                       <SelectContent>
-                        {FUEL_PUMPS.map((pump) => (
+                        {fuelPumps.map((pump) => (
                           <SelectItem key={pump} value={pump}>{pump}</SelectItem>
                         ))}
                       </SelectContent>
@@ -254,7 +290,14 @@ const AddExpense = () => {
               disabled={isSubmitting}
               className="bg-[#14b8a6] hover:bg-[#0d9488] text-white rounded-md px-4 py-2"
             >
-              {isSubmitting ? "Adding..." : "Add Expense"}
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Adding...
+                </>
+              ) : (
+                "Add Expense"
+              )}
             </Button>
           </div>
         </form>

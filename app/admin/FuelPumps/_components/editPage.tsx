@@ -89,7 +89,7 @@ const FuelPumpEdit = ({ pumpId }: { pumpId: string }) => {
             }
 
             toast.success("Fuel pump updated successfully.");
-            router.push("/admin/FuelPumps");
+            router.push(`/admin/FuelPumps/${pumpId}/view`);
         } catch (error: any) {
             toast.error(error.message);
         }

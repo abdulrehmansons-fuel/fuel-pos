@@ -1,7 +1,8 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,49 +22,112 @@ import {
   expenseEditSchema,
   type ExpenseEditFormData,
   EXPENSE_TYPES,
-  FUEL_PUMPS,
   PAYMENT_METHODS
 } from "@/validators/expense";
 
-type ExpenseData = {
-  id: string;
-  expenseTitle: string;
-  expenseType: string;
-  amount: string;
-  date: string;
-  pump: string;
-  paymentMethod: string;
-  notes?: string;
-};
-
-const ExpenseEdit = ({ data }: { data: ExpenseData }) => {
+const ExpenseEdit = ({ id }: { id: string }) => {
   const router = useRouter();
+  const [loading, setLoading] = useState(true);
+
+  const [fuelPumps, setFuelPumps] = useState<string[]>([]);
+  const [loadingPumps, setLoadingPumps] = useState(true);
 
   const {
     register,
     handleSubmit,
     control,
+    reset,
     formState: { errors, isSubmitting },
   } = useForm<ExpenseEditFormData>({
     resolver: zodResolver(expenseEditSchema),
     defaultValues: {
-      expenseTitle: data.expenseTitle,
-      expenseType: data.expenseType as any,
-      amount: data.amount,
-      date: data.date,
-      pump: data.pump as any,
-      paymentMethod: data.paymentMethod as any,
-      notes: data.notes || "",
+      expenseTitle: "",
+      expenseType: undefined,
+      amount: "",
+      date: "",
+      pump: undefined,
+      paymentMethod: undefined,
+      notes: "",
     },
   });
 
-  const onSubmit = (formData: ExpenseEditFormData) => {
+  // Fetch Data (Expense & Pumps)
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [expenseRes, pumpsRes] = await Promise.all([
+          fetch(`/api/expenses/${id}`),
+          fetch("/api/fuel-pumps")
+        ]);
+
+        if (pumpsRes.ok) {
+          const pumpsData = await pumpsRes.json();
+          setFuelPumps(pumpsData.map((p: any) => p.pumpName));
+        } else {
+          toast.error("Failed to load fuel pumps");
+        }
+        setLoadingPumps(false);
+
+        if (expenseRes.ok) {
+          const expenseData = await expenseRes.json();
+          // Format date to YYYY-MM-DD for input
+          const formattedDate = new Date(expenseData.date).toISOString().split('T')[0];
+
+          reset({
+            expenseTitle: expenseData.expenseTitle,
+            expenseType: expenseData.expenseType as any,
+            amount: String(expenseData.amount),
+            date: formattedDate,
+            pump: expenseData.pump as any,
+            paymentMethod: expenseData.paymentMethod as any,
+            notes: expenseData.notes || "",
+          });
+        } else {
+          toast.error("Failed to load expense details");
+          router.push("/admin/expenses");
+        }
+
+      } catch (error) {
+        console.error("Error fetching data:", error);
+        toast.error("An unexpected error occurred");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, [id, reset, router]);
+
+
+  const onSubmit = async (formData: ExpenseEditFormData) => {
     console.log("Updated Data:", formData);
 
-    // Mock update logic
-    toast.success("Expense updated successfully!");
-    router.push(`/admin/expenses/${data.id}/view`);
+    try {
+      const res = await fetch(`/api/expenses/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+
+      if (res.ok) {
+        toast.success("Expense updated successfully!");
+        router.push(`/admin/expenses/${id}/view`);
+      } else {
+        const errorData = await res.json();
+        toast.error(errorData.error || "Failed to update expense");
+      }
+    } catch (error) {
+      console.error("Error updating expense:", error);
+      toast.error("An unexpected error occurred");
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-[#f1f5f9]">
+        <Loader2 className="h-10 w-10 animate-spin text-[#14b8a6]" />
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 bg-[#f1f5f9] min-h-screen">
@@ -72,7 +136,7 @@ const ExpenseEdit = ({ data }: { data: ExpenseData }) => {
         <Button
           variant="outline"
           size="sm"
-          onClick={() => router.push(`/admin/expenses/${data.id}/view`)}
+          onClick={() => router.push(`/admin/expenses/${id}/view`)}
           className="gap-2 rounded-md"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -186,10 +250,10 @@ const ExpenseEdit = ({ data }: { data: ExpenseData }) => {
                   render={({ field }) => (
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <SelectTrigger className="rounded-md">
-                        <SelectValue placeholder="Select pump" />
+                        <SelectValue placeholder={loadingPumps ? "Loading..." : "Select pump"} />
                       </SelectTrigger>
                       <SelectContent>
-                        {FUEL_PUMPS.map((pump) => (
+                        {fuelPumps.map((pump) => (
                           <SelectItem key={pump} value={pump}>{pump}</SelectItem>
                         ))}
                       </SelectContent>
@@ -256,7 +320,7 @@ const ExpenseEdit = ({ data }: { data: ExpenseData }) => {
             <Button
               type="button"
               variant="outline"
-              onClick={() => router.push(`/admin/expenses/${data.id}/view`)}
+              onClick={() => router.push(`/admin/expenses/${id}/view`)}
               className="rounded-md"
             >
               Cancel
@@ -266,7 +330,14 @@ const ExpenseEdit = ({ data }: { data: ExpenseData }) => {
               disabled={isSubmitting}
               className="bg-[#14b8a6] hover:bg-[#0d9488] text-white rounded-md px-4 py-2"
             >
-              Update Expense
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Updating...
+                </>
+              ) : (
+                "Update Expense"
+              )}
             </Button>
           </div>
         </form>
