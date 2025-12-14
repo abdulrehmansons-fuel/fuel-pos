@@ -9,9 +9,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Fuel, Eye, EyeOff, Lock, User } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAuth } from '@/hooks/use-auth';
 
 export default function LoginPage() {
   const router = useRouter();
+  const { loginApi } = useAuth();
   const [formData, setFormData] = useState({
     username: '',
     password: '',
@@ -29,42 +31,27 @@ export default function LoginPage() {
     setLoading(true);
     setError('');
 
-    // Validate credentials
-    let isValid = false;
-
-    if (formData.userType === 'admin') {
-      // Admin credentials
-      isValid = formData.username === 'admin' && formData.password === '123456';
-    } else {
-      // Employer credentials
-      isValid = formData.username === 'employer1' && formData.password.length > 0;
-    }
-
-    if (!isValid) {
-      setError('Invalid credentials');
-      setLoading(false);
-      return;
-    }
-
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const user = await loginApi({
+        username: formData.username,
+        password: formData.password
+      });
 
-      if (formData.userType === 'admin') {
-        toast.success('Welcome, admin!');
+      if (user.role === 'admin') {
+        toast.success(`Welcome back, ${user.fullName}!`);
         router.push('/admin/dashboard');
       } else {
-        toast.success('Welcome, employer!');
-        // Redirect to employer dashboard with sample pump and employer IDs
-        // In production, these would come from the API response
-        router.push('/employer/pump-001/emp-001/sales');
+        toast.success(`Welcome back, ${user.fullName}!`);
+        // Redirect to employer dashboard
+        router.push('/employer/dashboard');
       }
-    } catch (err: unknown) {
-      if (typeof err === 'object' && err !== null && 'message' in err) {
-        setError((err as { message?: string }).message || 'Invalid username or password');
-      } else {
-        setError('Invalid username or password');
-      }
+
+      router.refresh();
+
+    } catch (err: any) {
+      const message = err.message || 'Invalid username or password';
+      setError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }

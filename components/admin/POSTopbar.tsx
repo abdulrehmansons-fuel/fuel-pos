@@ -30,13 +30,15 @@ interface TopBarProps {
   showUserMenu?: boolean;
 }
 
+import { useAuth } from '@/hooks/use-auth';
+
 export const TopBar = ({ title, showUserMenu = false }: TopBarProps) => {
   const router = useRouter();
+  const { logout, user } = useAuth();
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
 
-  const handleLogout = () => {
-    // Perform logout logic here (e.g., clear session)
-    router.push("/login");
+  const handleLogout = async () => {
+    await logout();
   };
 
   return (
