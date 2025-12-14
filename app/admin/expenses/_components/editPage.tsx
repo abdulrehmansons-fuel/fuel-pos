@@ -62,7 +62,7 @@ const ExpenseEdit = ({ id }: { id: string }) => {
 
         if (pumpsRes.ok) {
           const pumpsData = await pumpsRes.json();
-          setFuelPumps(pumpsData.map((p: any) => p.pumpName));
+          setFuelPumps(pumpsData.map((p: { pumpName: string }) => p.pumpName));
         } else {
           toast.error("Failed to load fuel pumps");
         }
@@ -75,11 +75,11 @@ const ExpenseEdit = ({ id }: { id: string }) => {
 
           reset({
             expenseTitle: expenseData.expenseTitle,
-            expenseType: expenseData.expenseType as any,
+            expenseType: expenseData.expenseType as ExpenseEditFormData['expenseType'],
             amount: String(expenseData.amount),
             date: formattedDate,
-            pump: expenseData.pump as any,
-            paymentMethod: expenseData.paymentMethod as any,
+            pump: expenseData.pump,
+            paymentMethod: expenseData.paymentMethod as ExpenseEditFormData['paymentMethod'],
             notes: expenseData.notes || "",
           });
         } else {

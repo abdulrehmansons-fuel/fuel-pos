@@ -50,7 +50,7 @@ const Employers = () => {
         if (res.ok) {
           const data = await res.json();
           // Map API data to UI interface
-          const mappedData = data.map((emp: any) => ({
+          const mappedData = data.map((emp: { employerId: string; _id: string; fullName: string; email: string; mobile: string; monthlySalary: number; fuelPump: string; status: "Active" | "Inactive" }) => ({
             id: emp.employerId || emp._id, // Use custom ID if available, else fallback
             _id: emp._id, // Keep real _id for links
             name: emp.fullName,
@@ -67,7 +67,7 @@ const Employers = () => {
         const pumpsRes = await fetch("/api/fuel-pumps");
         if (pumpsRes.ok) {
           const pumpsData = await pumpsRes.json();
-          setFuelPumps(pumpsData.map((p: any) => p.pumpName));
+          setFuelPumps(pumpsData.map((p: { pumpName: string }) => p.pumpName));
         }
 
       } catch (error) {

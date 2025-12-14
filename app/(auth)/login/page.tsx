@@ -48,8 +48,8 @@ export default function LoginPage() {
 
       router.refresh();
 
-    } catch (err: any) {
-      const message = err.message || 'Invalid username or password';
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Invalid username or password';
       setError(message);
       toast.error(message);
     } finally {

@@ -36,10 +36,10 @@ export async function PUT(req: NextRequest) {
             modifiedCount: result.modifiedCount
         });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error updating stock prices:", error);
         return NextResponse.json(
-            { error: error.message || "Failed to update stock prices" },
+            { error: error instanceof Error ? error.message : "Failed to update stock prices" },
             { status: 500 }
         );
     }

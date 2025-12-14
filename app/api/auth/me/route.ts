@@ -29,7 +29,7 @@ export async function GET() {
         }
 
         return NextResponse.json({ user });
-    } catch (error) {
+    } catch {
         // Token invalid or expired
         return NextResponse.json({ user: null });
     }

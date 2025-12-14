@@ -42,10 +42,10 @@ export async function POST(req: NextRequest) {
         });
 
         return NextResponse.json(stock, { status: 201 });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error creating stock:", error);
         return NextResponse.json(
-            { error: error.message || "Failed to create stock" },
+            { error: error instanceof Error ? error.message : "Failed to create stock" },
             { status: 500 }
         );
     }

@@ -37,7 +37,7 @@ const AddExpense = () => {
         const res = await fetch("/api/fuel-pumps");
         if (res.ok) {
           const data = await res.json();
-          setFuelPumps(data.map((p: any) => p.pumpName));
+          setFuelPumps(data.map((p: { pumpName: string }) => p.pumpName));
         }
       } catch (error) {
         console.error("Error fetching pumps:", error);

@@ -4,6 +4,11 @@ import connectDB from "@/lib/db";
 import User from "@/models/User";
 import { employerEditSchema } from "@/validators/employer";
 
+interface MongoError extends Error {
+    code?: number;
+    keyPattern?: Record<string, unknown>;
+}
+
 // Helper to validate Mongo ID
 const isValidObjectId = (id: string) => /^[0-9a-fA-F]{24}$/.test(id);
 
@@ -119,6 +124,7 @@ export async function PUT(
         await existingEmployer.save();
 
         // Return updated user without password
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { password, ...updatedEmployer } = existingEmployer.toObject();
 
         return NextResponse.json({
@@ -126,11 +132,11 @@ export async function PUT(
             employer: updatedEmployer
         }, { status: 200 });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error updating employer:", error);
 
-        if (error.code === 11000) {
-            const field = Object.keys(error.keyPattern)[0];
+        if (error instanceof Error && 'code' in error && (error as MongoError).code === 11000) {
+            const field = Object.keys((error as MongoError).keyPattern || {})[0];
             return NextResponse.json(
                 { error: `${field.charAt(0).toUpperCase() + field.slice(1)} already exists` },
                 { status: 409 }

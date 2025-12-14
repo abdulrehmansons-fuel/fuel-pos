@@ -98,7 +98,7 @@ export async function PUT(req: NextRequest, { params }: Props) {
             { status: 200 }
         );
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error updating fuel pump:", error);
         return NextResponse.json(
             { error: "Failed to update fuel pump" },

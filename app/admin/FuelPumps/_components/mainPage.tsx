@@ -43,7 +43,7 @@ const FuelPumps = () => {
                 if (res.ok) {
                     const data = await res.json();
                     // Map API data
-                    const mappedData = data.map((pump: any) => ({
+                    const mappedData = data.map((pump: { _id: string; pumpName: string; location?: string; status: "active" | "inactive"; totalNozzles: number }) => ({
                         id: pump._id,
                         name: pump.pumpName,
                         location: pump.location || "—",

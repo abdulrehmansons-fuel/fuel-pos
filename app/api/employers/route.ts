@@ -4,8 +4,13 @@ import connectDB from "@/lib/db";
 import User from "@/models/User";
 import { employerAddSchema } from "@/validators/employer";
 
+interface MongoError extends Error {
+    code?: number;
+    keyPattern?: Record<string, unknown>;
+}
+
 // GET: List all employers
-export async function GET(req: NextRequest) {
+export async function GET() {
     try {
         await connectDB();
 
@@ -120,6 +125,7 @@ export async function POST(req: NextRequest) {
         });
 
         // Remove password from response
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { password, ...employerWithoutPassword } = newEmployer.toObject();
 
         return NextResponse.json(
@@ -130,12 +136,12 @@ export async function POST(req: NextRequest) {
             { status: 201 }
         );
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error creating employer:", error);
 
         // Handle specific MongoDB Duplicate Key Errors
-        if (error.code === 11000) {
-            const field = Object.keys(error.keyPattern)[0];
+        if (error instanceof Error && 'code' in error && (error as MongoError).code === 11000) {
+            const field = Object.keys((error as MongoError).keyPattern || {})[0];
             return NextResponse.json(
                 { error: `${field.charAt(0).toUpperCase() + field.slice(1)} already exists` },
                 { status: 409 }

@@ -5,7 +5,7 @@ import Expense from "@/models/Expense";
 import { expenseAddSchema } from "@/validators/expense";
 
 // GET: List all expenses
-export async function GET(req: NextRequest) {
+export async function GET() {
     try {
         await connectDB();
 
@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
             { status: 201 }
         );
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error creating expense:", error);
 
         return NextResponse.json(

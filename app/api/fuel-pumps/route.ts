@@ -4,8 +4,12 @@ import connectDB from "@/lib/db";
 import FuelPump from "@/models/FuelPump";
 import { fuelPumpAddSchema } from "@/validators/fuelpump";
 
+interface MongoError extends Error {
+    code?: number;
+}
+
 // GET: List all fuel pumps
-export async function GET(req: NextRequest) {
+export async function GET() {
     try {
         await connectDB();
 
@@ -71,10 +75,10 @@ export async function POST(req: NextRequest) {
             { status: 201 }
         );
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error creating fuel pump:", error);
 
-        if (error.code === 11000) {
+        if (error instanceof Error && 'code' in error && (error as MongoError).code === 11000) {
             return NextResponse.json(
                 { error: "Pump name already exists" },
                 { status: 409 }

@@ -34,7 +34,7 @@ import { useAuth } from '@/hooks/use-auth';
 
 export const TopBar = ({ title, showUserMenu = false }: TopBarProps) => {
   const router = useRouter();
-  const { logout, user } = useAuth();
+  const { logout } = useAuth();
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
 
   const handleLogout = async () => {

@@ -60,10 +60,10 @@ export async function PUT(req: NextRequest, { params }: Props) {
         }
 
         return NextResponse.json(updatedStock);
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error updating stock:", error);
         return NextResponse.json(
-            { error: error.message || "Failed to update stock" },
+            { error: error instanceof Error ? error.message : "Failed to update stock" },
             { status: 500 }
         );
     }

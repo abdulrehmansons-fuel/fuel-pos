@@ -19,7 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Search, Plus, Receipt, TrendingUp, DollarSign, Loader2 } from "lucide-react";
+import { Search, Plus, Receipt, TrendingUp, DollarSign } from "lucide-react";
 import { EXPENSE_TYPES } from "@/validators/expense";
 
 interface Expense {
@@ -50,7 +50,7 @@ const Expenses = () => {
         const expenseRes = await fetch("/api/expenses");
         if (expenseRes.ok) {
           const data = await expenseRes.json();
-          const mappedData = data.map((exp: any) => ({
+          const mappedData = data.map((exp: { _id: string; expenseTitle: string; expenseType: string; amount: number; pump: string; date: string; notes?: string }) => ({
             id: exp._id.substring(0, 6).toUpperCase(), // Simulating a short ID
             _id: exp._id,
             name: exp.expenseTitle,
@@ -67,7 +67,7 @@ const Expenses = () => {
         const pumpsRes = await fetch("/api/fuel-pumps");
         if (pumpsRes.ok) {
           const pumpsData = await pumpsRes.json();
-          setFuelPumps(pumpsData.map((p: any) => p.pumpName));
+          setFuelPumps(pumpsData.map((p: { pumpName: string }) => p.pumpName));
         }
 
       } catch (error) {

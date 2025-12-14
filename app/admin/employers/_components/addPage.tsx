@@ -46,7 +46,7 @@ const AddEmployer = () => {
         if (res.ok) {
           const data = await res.json();
           // Assuming pumpName is unique and what we want to display/store
-          setFuelPumps(data.map((p: any) => p.pumpName));
+          setFuelPumps(data.map((p: { pumpName: string }) => p.pumpName));
         }
       } catch (error) {
         console.error("Failed to fetch pumps", error);
@@ -70,8 +70,12 @@ const AddEmployer = () => {
 
       toast.success("Employer added successfully!");
       router.push("/admin/employers");
-    } catch (error: any) {
-      toast.error(error.message);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        toast.error(error.message);
+      } else {
+        toast.error("An unknown error occurred");
+      }
     }
   };
 

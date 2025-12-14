@@ -18,22 +18,9 @@ import {
 import { toast } from "sonner";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { employerEditSchema, type EmployerEditFormData, EMPLOYER_STATUS, FUEL_PUMPS } from "@/validators/employer";
+import { employerEditSchema, type EmployerEditFormData, EMPLOYER_STATUS } from "@/validators/employer";
 
-type EmployerData = {
-  _id: string;
-  fullName: string;
-  email: string;
-  username: string;
-  mobile: string;
-  address?: string;
-  fuelPump: string;
-  status: string;
-  monthlySalary: number;
-  advanceSalary: number;
-  joiningDate: string;
-  notes?: string;
-};
+
 
 const EmployerEdit = ({ employerId }: { employerId: string }) => {
   const router = useRouter();
@@ -73,7 +60,7 @@ const EmployerEdit = ({ employerId }: { employerId: string }) => {
         let availablePumps: string[] = [];
         if (pumpsRes.ok) {
           const pumpsData = await pumpsRes.json();
-          availablePumps = pumpsData.map((p: any) => p.pumpName);
+          availablePumps = pumpsData.map((p: { pumpName: string }) => p.pumpName);
           setFuelPumps(availablePumps);
         }
 
@@ -125,8 +112,12 @@ const EmployerEdit = ({ employerId }: { employerId: string }) => {
 
       toast.success("Employer updated successfully!");
       router.push(`/admin/employers/${employerId}/view`);
-    } catch (error: any) {
-      toast.error(error.message);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        toast.error(error.message);
+      } else {
+        toast.error("An unknown error occurred");
+      }
     }
   };
 

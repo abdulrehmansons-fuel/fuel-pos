@@ -90,7 +90,7 @@ export async function PUT(req: NextRequest, { params }: Props) {
             expense: updatedExpense
         }, { status: 200 });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error updating expense:", error);
         return NextResponse.json(
             { error: "Failed to update expense" },
