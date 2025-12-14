@@ -56,6 +56,8 @@ export const stockAddSchema = z.object({
         invalid_type_error: 'Please select a valid payment type'
     }).optional(),
 
+    pump: z.string().min(1, "Pump is required"),
+
     notes: z.string().optional(),
 });
 

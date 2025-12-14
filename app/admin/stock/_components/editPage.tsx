@@ -1,7 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Upload } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ArrowLeft, Upload, Loader2, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,39 +25,105 @@ import {
   PAYMENT_TYPES
 } from "@/validators/stock";
 
-type StockEditData = {
-  id: string;
+type StockData = {
+  _id: string; // Use _id from backend
   fuelType: string;
-  quantity: string;
-  purchasePricePerLiter: string;
-  salePricePerLiter: string;
+  quantity: number;
+  purchasePricePerLiter: number;
+  salePricePerLiter: number;
   purchaseDate: string;
   supplier: string;
   paymentType: string;
   notes: string;
+  pump: string;
 };
 
-const StockEdit = ({ data }: { data: StockEditData }) => {
+const StockEdit = ({ id }: { id: string }) => {
   const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<StockData | null>(null);
+  const [pumps, setPumps] = useState<{ _id: string, pumpName: string }[]>([]);
+  const [loadingPumps, setLoadingPumps] = useState(true);
+
+  // Separate state for "Add New Quantity"
+  const [addQty, setAddQty] = useState<string>("");
 
   const {
     register,
     handleSubmit,
     control,
+    setValue,
+    reset,
     formState: { errors, isSubmitting },
   } = useForm<StockEditFormData>({
     resolver: zodResolver(stockEditSchema),
     defaultValues: {
-      fuelType: data.fuelType as any,
-      quantity: data.quantity,
-      purchasePricePerLiter: data.purchasePricePerLiter,
-      salePricePerLiter: data.salePricePerLiter,
-      purchaseDate: data.purchaseDate,
-      supplier: data.supplier,
-      paymentType: data.paymentType as any,
-      notes: data.notes,
+      fuelType: "Petrol", // Default, will be overridden
+      quantity: "0",
+      purchasePricePerLiter: "0",
+      salePricePerLiter: "0",
+      purchaseDate: new Date().toISOString().split('T')[0],
+      supplier: "",
+      paymentType: "Cash",
+      notes: "",
+      pump: "",
     },
   });
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [stockRes, pumpsRes] = await Promise.all([
+          fetch(`/api/stocks/${id}`),
+          fetch("/api/fuel-pumps")
+        ]);
+
+        if (stockRes.ok) {
+          const stockData = await stockRes.json();
+          setData(stockData);
+          // Reset form with fetched data
+          reset({
+            fuelType: stockData.fuelType,
+            quantity: stockData.quantity.toString(),
+            purchasePricePerLiter: stockData.purchasePricePerLiter.toString(),
+            salePricePerLiter: stockData.salePricePerLiter.toString(),
+            purchaseDate: stockData.purchaseDate ? new Date(stockData.purchaseDate).toISOString().split('T')[0] : "",
+            supplier: stockData.supplier,
+            paymentType: stockData.paymentType,
+            notes: stockData.notes,
+            pump: stockData.pump,
+          });
+        } else {
+          toast.error("Failed to load stock details");
+          router.push("/admin/stock");
+        }
+
+        if (pumpsRes.ok) {
+          const pumpsData = await pumpsRes.json();
+          setPumps(pumpsData);
+        }
+      } catch (error) {
+        console.error("Error fetching data:", error);
+        toast.error("Failed to load data");
+      } finally {
+        setLoading(false);
+        setLoadingPumps(false);
+      }
+    };
+    fetchData();
+  }, [id, router, reset]);
+
+
+  // Update total quantity whenever user types in "Add Quantity"
+  // Total = Original Existing + Add Qty
+  useEffect(() => {
+    if (data) {
+      const existing = parseFloat(data.quantity.toString()) || 0;
+      const added = parseFloat(addQty) || 0;
+      setValue("quantity", (existing + added).toString());
+    }
+  }, [addQty, data, setValue]);
+
 
   const quantity = useWatch({ control, name: "quantity" });
   const purchasePricePerLiter = useWatch({ control, name: "purchasePricePerLiter" });
@@ -72,13 +139,36 @@ const StockEdit = ({ data }: { data: StockEditData }) => {
       ? (parseFloat(quantity) * parseFloat(salePricePerLiter)).toFixed(2)
       : "0.00";
 
-  const onSubmit = (formData: StockEditFormData) => {
-    console.log("Updated Stock Data:", formData);
+  const onSubmit = async (formData: StockEditFormData) => {
+    try {
+      const res = await fetch(`/api/stocks/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
 
-    toast.success(`${formData.fuelType} purchase has been updated successfully.`);
-
-    setTimeout(() => router.push("/admin/stock"), 1000);
+      if (res.ok) {
+        toast.success(`${formData.fuelType} purchase has been updated successfully.`);
+        router.push(`/admin/stock/${id}/view`);
+      } else {
+        const err = await res.json();
+        toast.error(err.error || "Failed to update stock");
+      }
+    } catch (error) {
+      console.error("Error updating stock:", error);
+      toast.error("An unexpected error occurred");
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-[#f1f5f9]">
+        <Loader2 className="h-10 w-10 animate-spin text-[#14b8a6]" />
+      </div>
+    );
+  }
+
+  if (!data) return null;
 
   return (
     <div className="p-6 bg-[#f1f5f9] min-h-screen">
@@ -86,7 +176,7 @@ const StockEdit = ({ data }: { data: StockEditData }) => {
       <div className="flex items-center gap-3 mb-6">
         <Button
           variant="outline"
-          onClick={() => router.push(`/admin/stock/${data.id}/view`)}
+          onClick={() => router.push(`/admin/stock/${id}/view`)}
           className="rounded-md"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
@@ -130,14 +220,63 @@ const StockEdit = ({ data }: { data: StockEditData }) => {
               </div>
 
               <div className="space-y-2">
+                <Label htmlFor="pump" className="text-[#020617]">
+                  Pump / Station <span className="text-red-500">*</span>
+                </Label>
+                <Controller
+                  name="pump"
+                  control={control}
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <SelectTrigger className="rounded-md">
+                        <SelectValue placeholder={loadingPumps ? "Loading..." : "Select pump"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {pumps.map((pump) => (
+                          <SelectItem key={pump._id} value={pump.pumpName}>{pump.pumpName}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                {errors.pump && (
+                  <p className="text-sm text-red-500">{errors.pump.message}</p>
+                )}
+              </div>
+
+              {/* Special Quantity Logic */}
+              <div className="space-y-2">
+                <Label className="text-[#020617]">Existing Quantity</Label>
+                <Input
+                  disabled
+                  value={data.quantity}
+                  className="bg-gray-100"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-[#020617]">Add New Stock (Liters)</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  placeholder="e.g. 500"
+                  value={addQty}
+                  onChange={(e) => setAddQty(e.target.value)}
+                  className="border-green-300 focus:border-green-500"
+                />
+                <p className="text-xs text-gray-500">Enter amount to ADD to existing stock.</p>
+              </div>
+
+              <div className="space-y-2">
                 <Label htmlFor="quantity" className="text-[#020617]">
-                  Quantity (Liters) <span className="text-red-500">*</span>
+                  Total Quantity (Result) <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   id="quantity"
                   type="number"
                   placeholder="Enter quantity"
-                  className="rounded-md"
+                  className="rounded-md bg-gray-50 font-bold"
+                  readOnly // Mostly read-only as it is calculated, but technically form sends it
                   min="0"
                   step="0.01"
                   {...register("quantity")}
@@ -209,6 +348,7 @@ const StockEdit = ({ data }: { data: StockEditData }) => {
                 />
               </div>
 
+              {/* Sale Price Date */}
               <div className="space-y-2">
                 <Label htmlFor="purchaseDate" className="text-[#020617]">
                   Purchase Date <span className="text-red-500">*</span>
@@ -314,7 +454,7 @@ const StockEdit = ({ data }: { data: StockEditData }) => {
             <Button
               type="button"
               variant="outline"
-              onClick={() => router.push(`/admin/stock/${data.id}/view`)}
+              onClick={() => router.push(`/admin/stock/${data._id}/view`)}
               className="rounded-md"
             >
               Cancel
@@ -324,7 +464,17 @@ const StockEdit = ({ data }: { data: StockEditData }) => {
               disabled={isSubmitting}
               className="bg-[#14b8a6] hover:bg-[#0d9488] text-white rounded-md px-4 py-2"
             >
-              Update Purchase
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="mr-2 h-4 w-4" />
+                  Update Purchase
+                </>
+              )}
             </Button>
           </div>
         </form>
