@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -15,53 +15,61 @@ import {
 } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { useForm, Controller, useWatch } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+    stockAddSchema,
+    type StockAddFormData,
+    FUEL_TYPES,
+    PAYMENT_TYPES
+} from "@/validators/stock";
 
 const AddStock = () => {
     const router = useRouter();
     const { toast } = useToast();
 
-    const [formData, setFormData] = useState({
-        fuelType: "",
-        quantity: "",
-        purchasePricePerLiter: "",
-        salePricePerLiter: "",
-        purchaseDate: "",
-        supplier: "",
-        paymentType: "",
-        notes: "",
+    const {
+        register,
+        handleSubmit,
+        control,
+        formState: { errors, isSubmitting },
+    } = useForm<StockAddFormData>({
+        resolver: zodResolver(stockAddSchema),
+        defaultValues: {
+            fuelType: undefined,
+            quantity: "",
+            purchasePricePerLiter: "",
+            salePricePerLiter: "",
+            purchaseDate: "",
+            supplier: "",
+            paymentType: undefined,
+            notes: "",
+        },
     });
 
+    const quantity = useWatch({ control, name: "quantity" });
+    const purchasePricePerLiter = useWatch({ control, name: "purchasePricePerLiter" });
+    const salePricePerLiter = useWatch({ control, name: "salePricePerLiter" });
+
     const totalPurchaseAmount =
-        formData.quantity && formData.purchasePricePerLiter
-            ? (parseFloat(formData.quantity) * parseFloat(formData.purchasePricePerLiter)).toFixed(2)
+        quantity && purchasePricePerLiter && !isNaN(Number(quantity)) && !isNaN(Number(purchasePricePerLiter))
+            ? (parseFloat(quantity) * parseFloat(purchasePricePerLiter)).toFixed(2)
             : "0.00";
 
     const totalSaleAmount =
-        formData.quantity && formData.salePricePerLiter
-            ? (parseFloat(formData.quantity) * parseFloat(formData.salePricePerLiter)).toFixed(2)
+        quantity && salePricePerLiter && !isNaN(Number(quantity)) && !isNaN(Number(salePricePerLiter))
+            ? (parseFloat(quantity) * parseFloat(salePricePerLiter)).toFixed(2)
             : "0.00";
 
-    const handleInputChange = (field: string, value: string) => {
-        setFormData((prev) => ({ ...prev, [field]: value }));
-    };
-
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-
-        if (!formData.fuelType || !formData.quantity || !formData.purchasePricePerLiter || !formData.salePricePerLiter || !formData.purchaseDate) {
-            toast({
-                title: "Missing Required Fields",
-                description: "Please fill in all required fields including Purchase and Sales prices.",
-                variant: "destructive",
-            });
-            return;
-        }
+    const onSubmit = (data: StockAddFormData) => {
+        console.log("Stock Form Data:", data);
 
         toast({
             title: "Stock Purchase Added",
-            description: `${formData.fuelType} purchase has been recorded.`,
+            description: `${data.fuelType} purchase has been recorded.`,
         });
 
+        // Mock API delay
         setTimeout(() => router.push("/admin/stock"), 1000);
     };
 
@@ -82,7 +90,7 @@ const AddStock = () => {
 
             {/* Form Card */}
             <Card className="p-6 bg-white border shadow-sm rounded-xl space-y-6">
-                <form onSubmit={handleSubmit}>
+                <form onSubmit={handleSubmit(onSubmit)}>
                     {/* Section 1: Fuel Information */}
                     <div className="space-y-4 mb-6">
                         <h2 className="text-sm font-semibold text-[#64748b] uppercase tracking-wide">
@@ -93,21 +101,25 @@ const AddStock = () => {
                                 <Label htmlFor="fuelType" className="text-[#020617]">
                                     Fuel Type <span className="text-red-500">*</span>
                                 </Label>
-                                <Select
-                                    value={formData.fuelType}
-                                    onValueChange={(value) => handleInputChange("fuelType", value)}
-                                >
-                                    <SelectTrigger className="rounded-md">
-                                        <SelectValue placeholder="Select product / fuel type" />
-                                    </SelectTrigger>
-                                    <SelectContent className="max-h-60">
-                                        <SelectItem value="Petrol">Petrol</SelectItem>
-                                        <SelectItem value="Diesel">Diesel</SelectItem>
-                                        <SelectItem value="High-Octane">High-Octane</SelectItem>
-                                        <SelectItem value="Engine Oil">Engine Oil</SelectItem>
-                                        <SelectItem value="Lubricants">Lubricants</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                                <Controller
+                                    name="fuelType"
+                                    control={control}
+                                    render={({ field }) => (
+                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                            <SelectTrigger className="rounded-md">
+                                                <SelectValue placeholder="Select product / fuel type" />
+                                            </SelectTrigger>
+                                            <SelectContent className="max-h-60">
+                                                {FUEL_TYPES.map((type) => (
+                                                    <SelectItem key={type} value={type}>{type}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    )}
+                                />
+                                {errors.fuelType && (
+                                    <p className="text-sm text-red-500">{errors.fuelType.message}</p>
+                                )}
                             </div>
 
                             <div className="space-y-2">
@@ -117,12 +129,15 @@ const AddStock = () => {
                                 <Input
                                     id="quantity"
                                     type="number"
-                                    value={formData.quantity}
-                                    onChange={(e) => handleInputChange("quantity", e.target.value)}
                                     placeholder="Enter quantity"
                                     className="rounded-md"
                                     min="0"
+                                    step="0.01"
+                                    {...register("quantity")}
                                 />
+                                {errors.quantity && (
+                                    <p className="text-sm text-red-500">{errors.quantity.message}</p>
+                                )}
                             </div>
 
                             {/* Purchase Price Section */}
@@ -133,12 +148,15 @@ const AddStock = () => {
                                 <Input
                                     id="purchasePricePerLiter"
                                     type="number"
-                                    value={formData.purchasePricePerLiter}
-                                    onChange={(e) => handleInputChange("purchasePricePerLiter", e.target.value)}
                                     placeholder="Enter purchase price"
                                     className="rounded-md"
                                     min="0"
+                                    step="0.01"
+                                    {...register("purchasePricePerLiter")}
                                 />
+                                {errors.purchasePricePerLiter && (
+                                    <p className="text-sm text-red-500">{errors.purchasePricePerLiter.message}</p>
+                                )}
                             </div>
 
                             <div className="space-y-2">
@@ -161,12 +179,15 @@ const AddStock = () => {
                                 <Input
                                     id="salePricePerLiter"
                                     type="number"
-                                    value={formData.salePricePerLiter}
-                                    onChange={(e) => handleInputChange("salePricePerLiter", e.target.value)}
                                     placeholder="Enter sale price"
                                     className="rounded-md"
                                     min="0"
+                                    step="0.01"
+                                    {...register("salePricePerLiter")}
                                 />
+                                {errors.salePricePerLiter && (
+                                    <p className="text-sm text-red-500">{errors.salePricePerLiter.message}</p>
+                                )}
                             </div>
 
                             <div className="space-y-2">
@@ -188,10 +209,12 @@ const AddStock = () => {
                                 <Input
                                     id="purchaseDate"
                                     type="date"
-                                    value={formData.purchaseDate}
-                                    onChange={(e) => handleInputChange("purchaseDate", e.target.value)}
                                     className="rounded-md"
+                                    {...register("purchaseDate")}
                                 />
+                                {errors.purchaseDate && (
+                                    <p className="text-sm text-red-500">{errors.purchaseDate.message}</p>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -208,30 +231,38 @@ const AddStock = () => {
                                 </Label>
                                 <Input
                                     id="supplier"
-                                    value={formData.supplier}
-                                    onChange={(e) => handleInputChange("supplier", e.target.value)}
                                     placeholder="Enter supplier name"
                                     className="rounded-md"
+                                    {...register("supplier")}
                                 />
+                                {errors.supplier && (
+                                    <p className="text-sm text-red-500">{errors.supplier.message}</p>
+                                )}
                             </div>
 
                             <div className="space-y-2">
                                 <Label htmlFor="paymentType" className="text-[#020617]">
                                     Payment Type
                                 </Label>
-                                <Select
-                                    value={formData.paymentType}
-                                    onValueChange={(value) => handleInputChange("paymentType", value)}
-                                >
-                                    <SelectTrigger className="rounded-md">
-                                        <SelectValue placeholder="Select payment type" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="Cash">Cash</SelectItem>
-                                        <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
-                                        <SelectItem value="Credit">Credit</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                                <Controller
+                                    name="paymentType"
+                                    control={control}
+                                    render={({ field }) => (
+                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                            <SelectTrigger className="rounded-md">
+                                                <SelectValue placeholder="Select payment type" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {PAYMENT_TYPES.map((type) => (
+                                                    <SelectItem key={type} value={type}>{type}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    )}
+                                />
+                                {errors.paymentType && (
+                                    <p className="text-sm text-red-500">{errors.paymentType.message}</p>
+                                )}
                             </div>
 
                             <div className="space-y-2 sm:col-span-2">
@@ -260,11 +291,13 @@ const AddStock = () => {
                             </Label>
                             <Textarea
                                 id="notes"
-                                value={formData.notes}
-                                onChange={(e) => handleInputChange("notes", e.target.value)}
                                 placeholder="Enter any additional notes..."
                                 className="rounded-md min-h-[100px]"
+                                {...register("notes")}
                             />
+                            {errors.notes && (
+                                <p className="text-sm text-red-500">{errors.notes.message}</p>
+                            )}
                         </div>
                     </div>
 
@@ -280,9 +313,10 @@ const AddStock = () => {
                         </Button>
                         <Button
                             type="submit"
+                            disabled={isSubmitting}
                             className="bg-[#14b8a6] hover:bg-[#0d9488] text-white rounded-md px-4 py-2"
                         >
-                            Add Stock Purchase
+                            {isSubmitting ? "Adding..." : "Add Stock Purchase"}
                         </Button>
                     </div>
                 </form>

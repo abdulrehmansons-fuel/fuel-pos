@@ -7,7 +7,8 @@ export const EXPENSE_TYPES = [
     'Maintenance',
     'Utility Bills',
     'Cash Withdrawal',
-    'Miscellaneous'
+    'Miscellaneous',
+    'Other'
 ] as const;
 
 // Fuel pump options

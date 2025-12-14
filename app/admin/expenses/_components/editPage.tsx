@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  expenseEditSchema,
+  type ExpenseEditFormData,
+  EXPENSE_TYPES,
+  FUEL_PUMPS,
+  PAYMENT_METHODS
+} from "@/validators/expense";
 
 type ExpenseData = {
   id: string;
@@ -29,33 +38,27 @@ type ExpenseData = {
 
 const ExpenseEdit = ({ data }: { data: ExpenseData }) => {
   const router = useRouter();
-  const [formData, setFormData] = useState({
-    expenseTitle: data.expenseTitle,
-    expenseType: data.expenseType,
-    amount: data.amount,
-    date: data.date,
-    pump: data.pump,
-    paymentMethod: data.paymentMethod,
-    notes: data.notes || "",
+
+  const {
+    register,
+    handleSubmit,
+    control,
+    formState: { errors, isSubmitting },
+  } = useForm<ExpenseEditFormData>({
+    resolver: zodResolver(expenseEditSchema),
+    defaultValues: {
+      expenseTitle: data.expenseTitle,
+      expenseType: data.expenseType as any,
+      amount: data.amount,
+      date: data.date,
+      pump: data.pump as any,
+      paymentMethod: data.paymentMethod as any,
+      notes: data.notes || "",
+    },
   });
 
-  const handleInputChange = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const handleUpdateExpense = () => {
-    // Validation
-    if (
-      !formData.expenseTitle ||
-      !formData.expenseType ||
-      !formData.amount ||
-      !formData.date ||
-      !formData.pump ||
-      !formData.paymentMethod
-    ) {
-      toast.error("Please fill in all required fields");
-      return;
-    }
+  const onSubmit = (formData: ExpenseEditFormData) => {
+    console.log("Updated Data:", formData);
 
     // Mock update logic
     toast.success("Expense updated successfully!");
@@ -80,168 +83,192 @@ const ExpenseEdit = ({ data }: { data: ExpenseData }) => {
 
       {/* Form Card */}
       <Card className="p-6 bg-white border shadow-sm rounded-xl space-y-6">
-        {/* Section: Expense Information */}
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-[#020617] border-b pb-2">
-            Expense Information
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label
-                htmlFor="expenseTitle"
-                className="text-sm font-medium text-[#020617]"
-              >
-                Expense Title / Name <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="expenseTitle"
-                value={formData.expenseTitle}
-                onChange={(e) => handleInputChange("expenseTitle", e.target.value)}
-                placeholder="Enter expense title"
-                className="rounded-md"
-              />
-            </div>
+        <form onSubmit={handleSubmit(onSubmit)}>
+          {/* Section: Expense Information */}
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold text-[#020617] border-b pb-2">
+              Expense Information
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label
+                  htmlFor="expenseTitle"
+                  className="text-sm font-medium text-[#020617]"
+                >
+                  Expense Title / Name <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="expenseTitle"
+                  placeholder="Enter expense title"
+                  className="rounded-md"
+                  {...register("expenseTitle")}
+                />
+                {errors.expenseTitle && (
+                  <p className="text-sm text-red-500">{errors.expenseTitle.message}</p>
+                )}
+              </div>
 
-            <div className="space-y-2">
-              <Label
-                htmlFor="expenseType"
-                className="text-sm font-medium text-[#020617]"
-              >
-                Expense Type <span className="text-red-500">*</span>
-              </Label>
-              <Select
-                value={formData.expenseType}
-                onValueChange={(value) => handleInputChange("expenseType", value)}
-              >
-                <SelectTrigger className="rounded-md">
-                  <SelectValue placeholder="Select expense type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Fuel Purchase">Fuel Purchase</SelectItem>
-                  <SelectItem value="Salary Paid">Salary Paid</SelectItem>
-                  <SelectItem value="Maintenance">Maintenance</SelectItem>
-                  <SelectItem value="Utility Bills">Utility Bills</SelectItem>
-                  <SelectItem value="Cash Withdrawal">Cash Withdrawal</SelectItem>
-                  <SelectItem value="Miscellaneous">Miscellaneous</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+              <div className="space-y-2">
+                <Label
+                  htmlFor="expenseType"
+                  className="text-sm font-medium text-[#020617]"
+                >
+                  Expense Type <span className="text-red-500">*</span>
+                </Label>
+                <Controller
+                  name="expenseType"
+                  control={control}
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <SelectTrigger className="rounded-md">
+                        <SelectValue placeholder="Select expense type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {EXPENSE_TYPES.map((type) => (
+                          <SelectItem key={type} value={type}>{type}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                {errors.expenseType && (
+                  <p className="text-sm text-red-500">{errors.expenseType.message}</p>
+                )}
+              </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="amount" className="text-sm font-medium text-[#020617]">
-                Amount (Rs.) <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="amount"
-                type="number"
-                value={formData.amount}
-                onChange={(e) => handleInputChange("amount", e.target.value)}
-                placeholder="Enter amount"
-                className="rounded-md"
-              />
-            </div>
+              <div className="space-y-2">
+                <Label htmlFor="amount" className="text-sm font-medium text-[#020617]">
+                  Amount (Rs.) <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="amount"
+                  type="number"
+                  placeholder="Enter amount"
+                  className="rounded-md"
+                  {...register("amount")}
+                />
+                {errors.amount && (
+                  <p className="text-sm text-red-500">{errors.amount.message}</p>
+                )}
+              </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="date" className="text-sm font-medium text-[#020617]">
-                Date <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="date"
-                type="date"
-                value={formData.date}
-                onChange={(e) => handleInputChange("date", e.target.value)}
-                className="rounded-md"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Section: Pump / Shop Details */}
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-[#020617] border-b pb-2">
-            Pump / Shop Details
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="pump" className="text-sm font-medium text-[#020617]">
-                Pump / Fuel Station <span className="text-red-500">*</span>
-              </Label>
-              <Select
-                value={formData.pump}
-                onValueChange={(value) => handleInputChange("pump", value)}
-              >
-                <SelectTrigger className="rounded-md">
-                  <SelectValue placeholder="Select pump" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Fuel Pump A">Fuel Pump A</SelectItem>
-                  <SelectItem value="Fuel Pump B">Fuel Pump B</SelectItem>
-                  <SelectItem value="Fuel Pump C">Fuel Pump C</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label
-                htmlFor="paymentMethod"
-                className="text-sm font-medium text-[#020617]"
-              >
-                Payment Method <span className="text-red-500">*</span>
-              </Label>
-              <Select
-                value={formData.paymentMethod}
-                onValueChange={(value) => handleInputChange("paymentMethod", value)}
-              >
-                <SelectTrigger className="rounded-md">
-                  <SelectValue placeholder="Select payment method" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Cash">Cash</SelectItem>
-                  <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
-                  <SelectItem value="Credit">Credit</SelectItem>
-                  <SelectItem value="Internal Adjustment">
-                    Internal Adjustment
-                  </SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="space-y-2">
+                <Label htmlFor="date" className="text-sm font-medium text-[#020617]">
+                  Date <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="date"
+                  type="date"
+                  className="rounded-md"
+                  {...register("date")}
+                />
+                {errors.date && (
+                  <p className="text-sm text-red-500">{errors.date.message}</p>
+                )}
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Section: Notes */}
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-[#020617] border-b pb-2">Notes</h2>
-          <div className="space-y-2">
-            <Label htmlFor="notes" className="text-sm font-medium text-[#020617]">
-              Additional Notes
-            </Label>
-            <Textarea
-              id="notes"
-              value={formData.notes}
-              onChange={(e) => handleInputChange("notes", e.target.value)}
-              placeholder="Enter any additional notes"
+          {/* Section: Pump / Shop Details */}
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold text-[#020617] border-b pb-2">
+              Pump / Shop Details
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="pump" className="text-sm font-medium text-[#020617]">
+                  Pump / Fuel Station <span className="text-red-500">*</span>
+                </Label>
+                <Controller
+                  name="pump"
+                  control={control}
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <SelectTrigger className="rounded-md">
+                        <SelectValue placeholder="Select pump" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {FUEL_PUMPS.map((pump) => (
+                          <SelectItem key={pump} value={pump}>{pump}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                {errors.pump && (
+                  <p className="text-sm text-red-500">{errors.pump.message}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label
+                  htmlFor="paymentMethod"
+                  className="text-sm font-medium text-[#020617]"
+                >
+                  Payment Method <span className="text-red-500">*</span>
+                </Label>
+                <Controller
+                  name="paymentMethod"
+                  control={control}
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <SelectTrigger className="rounded-md">
+                        <SelectValue placeholder="Select payment method" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PAYMENT_METHODS.map((method) => (
+                          <SelectItem key={method} value={method}>{method}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                {errors.paymentMethod && (
+                  <p className="text-sm text-red-500">{errors.paymentMethod.message}</p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Section: Notes */}
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold text-[#020617] border-b pb-2">Notes</h2>
+            <div className="space-y-2">
+              <Label htmlFor="notes" className="text-sm font-medium text-[#020617]">
+                Additional Notes
+              </Label>
+              <Textarea
+                id="notes"
+                placeholder="Enter any additional notes"
+                className="rounded-md"
+                rows={4}
+                {...register("notes")}
+              />
+              {errors.notes && (
+                <p className="text-sm text-red-500">{errors.notes.message}</p>
+              )}
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex justify-end gap-3 mt-6 pt-6 border-t">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => router.push(`/admin/expenses/${data.id}/view`)}
               className="rounded-md"
-              rows={4}
-            />
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              className="bg-[#14b8a6] hover:bg-[#0d9488] text-white rounded-md px-4 py-2"
+            >
+              Update Expense
+            </Button>
           </div>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex justify-end gap-3 mt-6 pt-6 border-t">
-          <Button
-            variant="outline"
-            onClick={() => router.push(`/admin/expenses/${data.id}/view`)}
-            className="rounded-md"
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleUpdateExpense}
-            className="bg-[#14b8a6] hover:bg-[#0d9488] text-white rounded-md px-4 py-2"
-          >
-            Update Expense
-          </Button>
-        </div>
+        </form>
       </Card>
     </div>
   );

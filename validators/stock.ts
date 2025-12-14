@@ -29,10 +29,16 @@ export const stockAddSchema = z.object({
             message: 'Quantity must be a positive number'
         }),
 
-    pricePerLiter: z.string()
-        .min(1, 'Price per liter is required')
+    purchasePricePerLiter: z.string()
+        .min(1, 'Purchase price per liter is required')
         .refine((val) => !isNaN(Number(val)) && Number(val) > 0, {
-            message: 'Price per liter must be a positive number'
+            message: 'Purchase price per liter must be a positive number'
+        }),
+
+    salePricePerLiter: z.string()
+        .min(1, 'Sale price per liter is required')
+        .refine((val) => !isNaN(Number(val)) && Number(val) > 0, {
+            message: 'Sale price per liter must be a positive number'
         }),
 
     purchaseDate: z.string()

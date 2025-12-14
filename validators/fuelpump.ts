@@ -5,10 +5,11 @@ export const PUMP_STATUS = ['active', 'inactive'] as const;
 
 // Fuel type options (for checkboxes)
 export const FUEL_TYPE_OPTIONS = [
-    'petrol',
-    'diesel',
-    'high-octane',
-    'engine-oil'
+    'Petrol',
+    'Diesel',
+    'High-Octane',
+    'Engine Oil',
+    'Lubricants'
 ] as const;
 
 // Base fuel pump schema for add form

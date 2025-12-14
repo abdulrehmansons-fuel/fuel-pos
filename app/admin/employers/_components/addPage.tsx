@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,47 +9,38 @@ import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { employerAddSchema, type EmployerAddFormData, EMPLOYER_STATUS, FUEL_PUMPS } from "@/validators/employer";
 
 const AddEmployer = () => {
   const router = useRouter();
   const { toast } = useToast();
 
-  const [formData, setFormData] = useState({
-    fullName: "",
-    email: "",
-    username: "",
-    password: "",
-    mobile: "",
-    address: "",
-    status: "",
-    fuelPump: "",
-    monthlySalary: "",
-    advanceSalary: "",
-    joiningDate: "",
-    notes: "",
+  const {
+    register,
+    handleSubmit,
+    control,
+    formState: { errors, isSubmitting },
+  } = useForm<EmployerAddFormData>({
+    resolver: zodResolver(employerAddSchema),
+    defaultValues: {
+      fullName: "",
+      email: "",
+      username: "",
+      password: "",
+      mobile: "",
+      address: "",
+      monthlySalary: "",
+      advanceSalary: "",
+      joiningDate: "",
+      notes: "",
+    },
   });
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleSelectChange = (name: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!formData.fullName || !formData.email || !formData.mobile) {
-      toast({
-        title: "Validation Error",
-        description: "Please fill in all required fields.",
-        variant: "destructive",
-      });
-      return;
-    }
-
+  const onSubmit = (data: EmployerAddFormData) => {
+    console.log("Form Data:", data);
+    // Here you would typically make an API call
     toast({
       title: "Success",
       description: "Employer added successfully!",
@@ -74,7 +65,7 @@ const AddEmployer = () => {
 
       {/* Employer Form Card */}
       <Card className="p-6 border shadow-sm bg-white rounded-xl space-y-6">
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit(onSubmit)}>
           {/* Section 1: Personal Information */}
           <div className="space-y-4">
             <h2 className="text-base font-semibold text-[#020617] border-b pb-2">
@@ -85,80 +76,81 @@ const AddEmployer = () => {
                 <Label htmlFor="fullName">Full Name *</Label>
                 <Input
                   id="fullName"
-                  name="fullName"
-                  value={formData.fullName}
-                  onChange={handleInputChange}
                   placeholder="Enter full name"
                   className="rounded-md"
-                  required
+                  {...register("fullName")}
                 />
+                {errors.fullName && (
+                  <p className="text-sm text-red-500">{errors.fullName.message}</p>
+                )}
               </div>
 
               <div className="flex flex-col space-y-1.5">
                 <Label htmlFor="email">Email *</Label>
                 <Input
                   id="email"
-                  name="email"
                   type="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
                   placeholder="Enter email address"
                   className="rounded-md"
-                  required
+                  {...register("email")}
                 />
+                {errors.email && (
+                  <p className="text-sm text-red-500">{errors.email.message}</p>
+                )}
               </div>
 
               <div className="flex flex-col space-y-1.5">
                 <Label htmlFor="username">Username *</Label>
                 <Input
                   id="username"
-                  name="username"
-                  value={formData.username}
-                  onChange={handleInputChange}
                   placeholder="Enter username"
                   className="rounded-md"
-                  required
+                  {...register("username")}
                 />
+                {errors.username && (
+                  <p className="text-sm text-red-500">{errors.username.message}</p>
+                )}
               </div>
 
               <div className="flex flex-col space-y-1.5">
                 <Label htmlFor="password">Password *</Label>
                 <Input
                   id="password"
-                  name="password"
                   type="password"
-                  value={formData.password}
-                  onChange={handleInputChange}
                   placeholder="Enter password"
                   className="rounded-md"
-                  required
+                  {...register("password")}
                 />
+                {errors.password && (
+                  <p className="text-sm text-red-500">{errors.password.message}</p>
+                )}
               </div>
 
               <div className="flex flex-col space-y-1.5">
                 <Label htmlFor="mobile">Mobile Number *</Label>
                 <Input
                   id="mobile"
-                  name="mobile"
                   type="tel"
-                  value={formData.mobile}
-                  onChange={handleInputChange}
                   placeholder="Enter mobile number"
                   className="rounded-md"
-                  required
+                  {...register("mobile")}
                 />
+                {errors.mobile && (
+                  <p className="text-sm text-red-500">{errors.mobile.message}</p>
+                )}
               </div>
 
               <div className="flex flex-col space-y-1.5 sm:col-span-2">
                 <Label htmlFor="address">Address</Label>
                 <Textarea
                   id="address"
-                  name="address"
-                  value={formData.address}
-                  onChange={handleInputChange}
                   placeholder="Enter full address"
                   className="rounded-md min-h-[80px]"
+                  {...register("address")}
                 />
+                {errors.address && (
+                  <p className="text-sm text-red-500">{errors.address.message}</p>
+                )}
               </div>
             </div>
           </div>
@@ -172,75 +164,93 @@ const AddEmployer = () => {
 
               <div className="flex flex-col space-y-1.5">
                 <Label htmlFor="status">Status *</Label>
-                <Select
-                  value={formData.status}
-                  onValueChange={(value) => handleSelectChange("status", value)}
-                >
-                  <SelectTrigger className="rounded-md">
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Active">Active</SelectItem>
-                    <SelectItem value="Inactive">Inactive</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Controller
+                  name="status"
+                  control={control}
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <SelectTrigger className="rounded-md">
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {EMPLOYER_STATUS.map((status) => (
+                          <SelectItem key={status} value={status}>
+                            {status}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                {errors.status && (
+                  <p className="text-sm text-red-500">{errors.status.message}</p>
+                )}
               </div>
 
               <div className="flex flex-col space-y-1.5">
                 <Label htmlFor="fuelPump">Fuel Pump *</Label>
-                <Select
-                  value={formData.fuelPump}
-                  onValueChange={(value) => handleSelectChange("fuelPump", value)}
-                >
-                  <SelectTrigger className="rounded-md">
-                    <SelectValue placeholder="Select fuel pump" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Fuel Pump A">Fuel Pump A</SelectItem>
-                    <SelectItem value="Fuel Pump B">Fuel Pump B</SelectItem>
-                    <SelectItem value="Fuel Pump C">Fuel Pump C</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Controller
+                  name="fuelPump"
+                  control={control}
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <SelectTrigger className="rounded-md">
+                        <SelectValue placeholder="Select fuel pump" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {FUEL_PUMPS.map((pump) => (
+                          <SelectItem key={pump} value={pump}>
+                            {pump}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                {errors.fuelPump && (
+                  <p className="text-sm text-red-500">{errors.fuelPump.message}</p>
+                )}
               </div>
 
               <div className="flex flex-col space-y-1.5">
                 <Label htmlFor="monthlySalary">Monthly Salary (Rs.) *</Label>
                 <Input
                   id="monthlySalary"
-                  name="monthlySalary"
                   type="number"
-                  value={formData.monthlySalary}
-                  onChange={handleInputChange}
                   placeholder="Enter monthly salary"
                   className="rounded-md"
-                  required
+                  {...register("monthlySalary")}
                 />
+                {errors.monthlySalary && (
+                  <p className="text-sm text-red-500">{errors.monthlySalary.message}</p>
+                )}
               </div>
 
               <div className="flex flex-col space-y-1.5">
                 <Label htmlFor="advanceSalary">Advance Salary (Rs.)</Label>
                 <Input
                   id="advanceSalary"
-                  name="advanceSalary"
                   type="number"
-                  value={formData.advanceSalary}
-                  onChange={handleInputChange}
                   placeholder="Enter advance amount (optional)"
                   className="rounded-md"
+                  {...register("advanceSalary")}
                 />
+                {errors.advanceSalary && (
+                  <p className="text-sm text-red-500">{errors.advanceSalary.message}</p>
+                )}
               </div>
 
               <div className="flex flex-col space-y-1.5">
                 <Label htmlFor="joiningDate">Joining Date *</Label>
                 <Input
                   id="joiningDate"
-                  name="joiningDate"
                   type="date"
-                  value={formData.joiningDate}
-                  onChange={handleInputChange}
                   className="rounded-md"
-                  required
+                  {...register("joiningDate")}
                 />
+                {errors.joiningDate && (
+                  <p className="text-sm text-red-500">{errors.joiningDate.message}</p>
+                )}
               </div>
             </div>
           </div>
@@ -254,12 +264,13 @@ const AddEmployer = () => {
               <Label htmlFor="notes">Additional Notes</Label>
               <Textarea
                 id="notes"
-                name="notes"
-                value={formData.notes}
-                onChange={handleInputChange}
                 placeholder="Add any additional notes or comments (optional)"
                 className="rounded-md min-h-[100px]"
+                {...register("notes")}
               />
+              {errors.notes && (
+                <p className="text-sm text-red-500">{errors.notes.message}</p>
+              )}
             </div>
           </div>
 
@@ -275,9 +286,10 @@ const AddEmployer = () => {
             </Button>
             <Button
               type="submit"
+              disabled={isSubmitting}
               className="bg-[#14b8a6] hover:bg-[#0d9488] text-white rounded-md px-4 py-2"
             >
-              Add Employer
+              {isSubmitting ? "Adding..." : "Add Employer"}
             </Button>
           </div>
         </form>
