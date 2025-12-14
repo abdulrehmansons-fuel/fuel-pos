@@ -6,7 +6,6 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "seed:admin": "tsx scripts/seed-admin.ts",
     "lint": "next lint"
   },
   "dependencies": {
