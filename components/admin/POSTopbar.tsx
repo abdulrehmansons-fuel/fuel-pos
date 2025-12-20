@@ -58,7 +58,7 @@ export const TopBar = ({ title, showUserMenu = false }: TopBarProps) => {
 
           // Filter categories below 100L
           const alerts = Object.entries(aggregation)
-            .filter(([_, total]) => total < 100)
+            .filter(([, total]) => total < 100)
             .map(([category, totalQuantity]) => ({ category, totalQuantity }));
 
           setStockAlerts(alerts);

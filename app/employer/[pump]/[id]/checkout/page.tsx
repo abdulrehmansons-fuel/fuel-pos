@@ -152,9 +152,9 @@ export default function CheckoutPage() {
             // Clear localStorage
             localStorage.removeItem('pendingSale');
             setSaleCompleted(true);
-        } catch (error: any) {
+        } catch (error) {
             console.error("Sale Error:", error);
-            alert(error.message || "An error occurred while processing the sale.");
+            alert((error as Error).message || "An error occurred while processing the sale.");
         } finally {
             setIsSubmitting(false);
         }

@@ -22,7 +22,7 @@ export async function GET(
         await connectDB();
         const { id } = params;
 
-        const sale = await Sale.findById(id).lean() as any;
+        const sale = (await Sale.findById(id).lean()) as unknown as Record<string, unknown>;
 
         if (!sale) {
             return NextResponse.json({ error: "Sale not found" }, { status: 404 });
@@ -74,6 +74,7 @@ export async function PUT(
             );
         }
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const sale = await Sale.findById(id) as any;
         if (!sale) {
             return NextResponse.json({ error: "Sale not found" }, { status: 404 });
@@ -173,7 +174,7 @@ export async function PUT(
             id,
             updateData,
             { new: true, runValidators: true }
-        ).lean() as any;
+        ) as unknown as Record<string, unknown>;
 
         if (!updatedSale) {
             return NextResponse.json({ error: "Sale not found" }, { status: 404 });

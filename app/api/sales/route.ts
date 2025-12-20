@@ -127,9 +127,9 @@ export async function GET(req: NextRequest) {
 
         console.log("Sales Query:", query); // Debug log
 
-        const sales = await Sale.find(query)
+        const sales = (await Sale.find(query)
             .sort({ createdAt: -1 })
-            .lean() as ({ pumpId?: string | { _id: any }; employerId?: string | { _id: any } } & Record<string, any>)[]; // Use lean() for better performance
+            .lean()) as unknown as ({ pumpId?: string | { _id: unknown }; employerId?: string | { _id: unknown } } & Record<string, unknown>)[]; // Use lean() for better performance
 
         // Manually fetch and attach pump and employer details to avoid populate schema issues
         const pumpIds = [...new Set(sales.map(s => s.pumpId?.toString()).filter(Boolean))];

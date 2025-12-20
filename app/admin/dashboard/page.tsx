@@ -101,7 +101,7 @@ export default function Dashboard() {
           };
         });
 
-        salesArr.forEach((s: any) => {
+        salesArr.forEach((s: { createdAt: string | Date; grandTotal?: number }) => {
           const sDate = new Date(s.createdAt);
           const monthIndex = last7Months.findIndex(m =>
             m.fullDate.getMonth() === sDate.getMonth() && m.fullDate.getFullYear() === sDate.getFullYear()
@@ -142,7 +142,7 @@ export default function Dashboard() {
 
         const totalVol = Object.values(categoryMap).reduce((sum, c) => sum + (c.value || 0), 0);
         const fuelSalesData = Object.entries(categoryMap)
-          .filter(([_, data]) => data.value > 0)
+          .filter(([, data]) => data.value > 0)
           .map(([name, data]) => ({
             name,
             value: totalVol > 0 ? Math.round((data.value / totalVol) * 100) : 0,
