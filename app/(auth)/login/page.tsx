@@ -42,8 +42,15 @@ export default function LoginPage() {
         router.push('/admin/dashboard');
       } else {
         toast.success(`Welcome back, ${user.fullName}!`);
-        // Redirect to employer dashboard
-        router.push('/employer/dashboard');
+        // Redirect to employer dashboard (Sales Page)
+        // Ensure we have the necessary data
+        if (user.fuelPump && user.id) {
+          const pumpName = encodeURIComponent(user.fuelPump);
+          router.push(`/employer/${pumpName}/${user.id}/createSales`);
+        } else {
+          // Fallback if data is missing
+          router.push('/employer/dashboard');
+        }
       }
 
       router.refresh();

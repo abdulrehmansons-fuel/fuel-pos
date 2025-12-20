@@ -1,8 +1,9 @@
 'use client';
 
-import { ReactNode } from "react";
+import { ReactNode, useState, useEffect } from "react";
 import { Topbar } from "@/components/employer/EmployerTopbar";
 import { usePathname, useParams, useRouter } from "next/navigation";
+import { getEmployerDetails } from "@/app/actions/getEmployer";
 
 interface EmployeeLayoutProps {
   children: ReactNode;
@@ -21,9 +22,25 @@ export const EmployeeLayout = ({ children }: EmployeeLayoutProps) => {
     ? 'create' as const
     : 'sales' as const;
 
-  // TODO: These should come from session/context or API
-  const pumpName = "Pump Station 1";
-  const employerName = "Employee Name";
+  // State for dynamic data
+  const [pumpName, setPumpName] = useState("Loading...");
+  const [employerName, setEmployerName] = useState("Loading...");
+
+  useEffect(() => {
+    if (pumpId) {
+      setPumpName(decodeURIComponent(pumpId));
+    }
+
+    const fetchEmployer = async () => {
+      if (employerId) {
+        const details = await getEmployerDetails(employerId);
+        if (details) {
+          setEmployerName(details.fullName);
+        }
+      }
+    };
+    fetchEmployer();
+  }, [pumpId, employerId]);
 
   const router = useRouter();
 

@@ -1,5 +1,6 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { getPumpStocks } from "@/app/actions/getStocks";
 import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -35,13 +36,7 @@ interface Product {
     defaultUnit: "L" | "mL" | "pcs";
 }
 
-const mockProducts: Product[] = [
-    { name: "Petrol", category: "Petrol", rate: 289.50, unit: "L", defaultUnit: "L" },
-    { name: "Diesel", category: "Diesel", rate: 319.25, unit: "L", defaultUnit: "L" },
-    { name: "High-Octane", category: "High-Octane", rate: 349.90, unit: "L", defaultUnit: "L" },
-    { name: "Engine Oil", category: "Engine Oil", rate: 2199.50, unit: "L", defaultUnit: "L" },
-    { name: "Lubricants", category: "Lubricants", rate: 799.99, unit: "L", defaultUnit: "L" },
-];
+
 
 export default function CreateSale() {
     const router = useRouter();
@@ -50,6 +45,17 @@ export default function CreateSale() {
     const employerId = params?.id as string;
 
     const [items, setItems] = useState<SaleItem[]>([]);
+    const [products, setProducts] = useState<Product[]>([]);
+
+    useEffect(() => {
+        const fetchStocks = async () => {
+            if (pumpId) {
+                const fetchedProducts = await getPumpStocks(pumpId);
+                setProducts(fetchedProducts);
+            }
+        };
+        fetchStocks();
+    }, [pumpId]);
     const [currentItem, setCurrentItem] = useState({
         productName: "",
         category: "",
@@ -62,7 +68,7 @@ export default function CreateSale() {
     const [notes, setNotes] = useState("");
 
     const handleProductSelect = (productName: string) => {
-        const product = mockProducts.find((p) => p.name === productName);
+        const product = products.find((p) => p.name === productName);
         if (product) {
             setCurrentItem({
                 ...currentItem,
@@ -221,11 +227,15 @@ export default function CreateSale() {
                                             <SelectValue placeholder="Select product or fuel type" />
                                         </SelectTrigger>
                                         <SelectContent className="bg-white max-h-60">
-                                            {mockProducts.map((product) => (
-                                                <SelectItem key={product.name} value={product.name}>
-                                                    {product.name}
-                                                </SelectItem>
-                                            ))}
+                                            {products.length === 0 ? (
+                                                <div className="p-2 text-sm text-gray-500">No stocks available</div>
+                                            ) : (
+                                                products.map((product) => (
+                                                    <SelectItem key={product.name} value={product.name}>
+                                                        {product.name}
+                                                    </SelectItem>
+                                                ))
+                                            )}
                                         </SelectContent>
                                     </Select>
                                 </div>

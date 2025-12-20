@@ -59,6 +59,8 @@ export async function POST(req: Request) {
                 username: user.username,
                 role: user.role,
                 fullName: user.fullName,
+                fuelPump: user.fuelPump,
+                employerId: user.employerId
             }
         });
 
