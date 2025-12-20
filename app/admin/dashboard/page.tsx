@@ -21,8 +21,7 @@ import {
   Package,
   Activity,
   CreditCard,
-  Wallet,
-  Calendar
+  Wallet
 } from "lucide-react";
 import {
   XAxis,
@@ -37,7 +36,7 @@ import {
   Area,
 } from "recharts";
 import { toast } from "sonner";
-import { format, subMonths, isAfter, startOfMonth } from "date-fns";
+import { format, subMonths, startOfMonth } from "date-fns";
 
 export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
@@ -53,10 +52,10 @@ export default function Dashboard() {
   });
 
   const [charts, setCharts] = useState({
-    financialData: [] as any[],
-    fuelSalesData: [] as any[],
-    recentSales: [] as any[],
-    stockAlerts: [] as any[]
+    financialData: [] as { name: string; fullDate: Date; revenue: number; expenses: number }[],
+    fuelSalesData: [] as { name: string; value: number; color: string }[],
+    recentSales: [] as { id: string; product: string; amount: number; status: string; time: string }[],
+    stockAlerts: [] as { item: string; current: number; min: number; status: string }[]
   });
 
   useEffect(() => {
@@ -70,7 +69,7 @@ export default function Dashboard() {
           fetch("/api/fuel-pumps")
         ]);
 
-        const [sales, expenses, stocks, pumps] = await Promise.all([
+        const [sales, expenses, stocks] = await Promise.all([
           salesRes.json(),
           expensesRes.json(),
           stocksRes.json(),
@@ -82,13 +81,13 @@ export default function Dashboard() {
         const stocksArr = Array.isArray(stocks) ? stocks : [];
 
         // 1. Basic Metrics
-        const totalRevenue = salesArr.reduce((sum: number, s: any) => sum + (s.grandTotal || 0), 0);
-        const totalExpenses = expensesArr.reduce((sum: number, e: any) => sum + (Number(e.amount) || 0), 0);
+        const totalRevenue = salesArr.reduce((sum: number, s: { grandTotal?: number }) => sum + (s.grandTotal || 0), 0);
+        const totalExpenses = expensesArr.reduce((sum: number, e: { amount?: string | number }) => sum + (Number(e.amount) || 0), 0);
         const netProfit = totalRevenue - totalExpenses;
         const profitMargin = totalRevenue > 0 ? ((netProfit / totalRevenue) * 100).toFixed(1) : "0";
 
-        const totalFuelSold = salesArr.reduce((sum: number, s: any) => {
-          return sum + (s.items?.reduce((iSum: number, item: any) => iSum + (item.quantity || item.quantityInLiters || 0), 0) || 0);
+        const totalFuelSold = salesArr.reduce((sum: number, s: { items?: { quantity?: number; quantityInLiters?: number }[] }) => {
+          return sum + (s.items?.reduce((iSum: number, item: { quantity?: number; quantityInLiters?: number }) => iSum + (item.quantity || item.quantityInLiters || 0), 0) || 0);
         }, 0);
 
         // 2. Financial Overview Chart (Last 7 Months)
@@ -112,7 +111,7 @@ export default function Dashboard() {
           }
         });
 
-        expensesArr.forEach((e: any) => {
+        expensesArr.forEach((e: { date?: string; createdAt: string; amount?: string | number }) => {
           const eDate = new Date(e.date || e.createdAt);
           const monthIndex = last7Months.findIndex(m =>
             m.fullDate.getMonth() === eDate.getMonth() && m.fullDate.getFullYear() === eDate.getFullYear()
@@ -130,8 +129,8 @@ export default function Dashboard() {
           "Lubricants": { value: 0, color: "#f59e0b" }
         };
 
-        salesArr.forEach((s: any) => {
-          s.items?.forEach((item: any) => {
+        salesArr.forEach((s: { items?: { category?: string; quantity?: number; quantityInLiters?: number }[] }) => {
+          s.items?.forEach((item: { category?: string; quantity?: number; quantityInLiters?: number }) => {
             const cat = item.category || "Other";
             if (categoryMap[cat]) {
               categoryMap[cat].value += (item.quantity || item.quantityInLiters || 0);
@@ -141,7 +140,7 @@ export default function Dashboard() {
           });
         });
 
-        const totalVol = Object.values(categoryMap).reduce((sum, c) => sum + c.value, 0);
+        const totalVol = Object.values(categoryMap).reduce((sum, c) => sum + (c.value || 0), 0);
         const fuelSalesData = Object.entries(categoryMap)
           .filter(([_, data]) => data.value > 0)
           .map(([name, data]) => ({
@@ -151,7 +150,7 @@ export default function Dashboard() {
           }));
 
         // 4. Recent Sales (Last 5)
-        const recentSales = salesArr.slice(0, 5).map((s: any) => ({
+        const recentSales = salesArr.slice(0, 5).map((s: { id?: string; _id?: string; items?: { productName?: string; category?: string }[]; grandTotal?: number; status?: string; createdAt: string }) => ({
           id: s.id || (s._id ? s._id.slice(-5).toUpperCase() : "N/A"),
           product: s.items?.[0]?.productName || s.items?.[0]?.category || "Fuel",
           amount: s.grandTotal || 0,
@@ -162,8 +161,8 @@ export default function Dashboard() {
         // 5. Stock Alerts (Threshold < 100L)
         const stockThreshold = 100;
         const stockAlerts = stocksArr
-          .filter((st: any) => (Number(st.quantity) || 0) < stockThreshold)
-          .map((st: any) => ({
+          .filter((st: { quantity?: string | number }) => (Number(st.quantity) || 0) < stockThreshold)
+          .map((st: { fuelType: string; pump?: string; quantity?: string | number }) => ({
             item: `${st.fuelType} (${st.pump || 'Main'})`,
             current: Number(st.quantity) || 0,
             min: stockThreshold,

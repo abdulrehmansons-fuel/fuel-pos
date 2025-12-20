@@ -66,8 +66,8 @@ export async function PUT(request: Request) {
         await user.save();
 
         return NextResponse.json({ message: 'Password updated successfully' });
-    } catch (error: any) {
+    } catch (error) {
         console.error('Password update error:', error);
-        return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
+        return NextResponse.json({ error: (error as Error).message || 'Internal Server Error' }, { status: 500 });
     }
 }

@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -57,7 +57,7 @@ export default function AdminProfilePage() {
             } else {
                 toast.error(data.error || "Failed to update password");
             }
-        } catch (error) {
+        } catch {
             toast.error("An error occurred. Please try again.");
         } finally {
             setIsUpdating(false);

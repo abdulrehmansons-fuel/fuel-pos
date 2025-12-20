@@ -51,7 +51,7 @@ export const TopBar = ({ title, showUserMenu = false }: TopBarProps) => {
         if (Array.isArray(stocks)) {
           // Aggregate by fuelType
           const aggregation: Record<string, number> = {};
-          stocks.forEach((s: any) => {
+          stocks.forEach((s: { fuelType?: string; quantity?: string | number }) => {
             const cat = s.fuelType || "Other";
             aggregation[cat] = (aggregation[cat] || 0) + (Number(s.quantity) || 0);
           });

@@ -9,7 +9,7 @@ export async function getPumpDetails(pumpName: string) {
         // Decode in case it's URL encoded
         const decodedName = decodeURIComponent(pumpName);
 
-        const pump = await FuelPump.findOne({ pumpName: decodedName } as any);
+        const pump = await FuelPump.findOne({ pumpName: decodedName });
 
         if (!pump) return null;
 

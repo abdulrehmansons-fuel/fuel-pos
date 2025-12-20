@@ -34,8 +34,8 @@ interface PaymentLog {
 
 interface Sale {
     _id: string;
-    employerId: any;
-    pumpId: any;
+    employerId: { fullName: string; email: string } | string;
+    pumpId: { pumpName: string; location: string } | string;
     customerName?: string;
     customerPhone?: string;
     items: SaleItem[];

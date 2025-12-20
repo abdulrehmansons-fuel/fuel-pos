@@ -24,9 +24,9 @@ import { toast } from "sonner";
 
 interface Sale {
     _id: string;
-    employerId: any;
-    pumpId: any;
-    items: any[];
+    employerId: { fullName: string; email: string } | string;
+    pumpId: { pumpName: string; location: string } | string;
+    items: { productName: string; category: string; quantity: number; unit: string; rate: number; total: number }[];
     grandTotal: number;
     amountPaid: number;
     paymentMethod: string;
@@ -232,7 +232,7 @@ const Sales = () => {
                                             SALE-{sale._id.slice(-6).toUpperCase()}
                                         </TableCell>
                                         <TableCell className="text-[#020617] max-w-[200px] truncate">
-                                            {sale.items.map((item: any) => item.productName).join(", ")}
+                                            {sale.items.map((item: { productName: string }) => item.productName).join(", ")}
                                         </TableCell>
                                         <TableCell className="text-[#020617]">
                                             {typeof sale.pumpId === 'object' && sale.pumpId?.pumpName ? sale.pumpId.pumpName : 'N/A'}

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/db";
-import Sale, { ISaleItem } from "@/models/Sale";
+import Sale from "@/models/Sale";
 import FuelPump from "@/models/FuelPump";
 import User from "@/models/User";
 import Stock from "@/models/Stock";
@@ -22,7 +22,7 @@ export async function GET(
         await connectDB();
         const { id } = params;
 
-        const sale = await Sale.findById(id).lean();
+        const sale = await Sale.findById(id).lean() as any;
 
         if (!sale) {
             return NextResponse.json({ error: "Sale not found" }, { status: 404 });
@@ -48,7 +48,7 @@ export async function GET(
         };
 
         return NextResponse.json(response, { status: 200 });
-    } catch (error: any) {
+    } catch (error) {
         console.error("Error fetching sale:", error);
         return NextResponse.json(
             { error: "Failed to fetch sale details" },
@@ -74,12 +74,12 @@ export async function PUT(
             );
         }
 
-        const sale = await Sale.findById(id);
+        const sale = await Sale.findById(id) as any;
         if (!sale) {
             return NextResponse.json({ error: "Sale not found" }, { status: 404 });
         }
 
-        const updateData: any = { ...validation.data };
+        const updateData: Record<string, unknown> = { ...validation.data };
 
         // If amountPaid is being updated, log it to payment history
         if (validation.data.amountPaid !== undefined && validation.data.amountPaid !== sale.amountPaid) {
@@ -103,7 +103,7 @@ export async function PUT(
                 performedBy: performer,
                 notes: validation.data.notes || `Payment ${additionalPayment > 0 ? 'added' : 'adjusted'}: ₨${Math.abs(additionalPayment)}`,
                 timestamp: new Date(),
-            } as any);
+            });
 
             // Recalculate payment status
             const balance = sale.grandTotal - validation.data.amountPaid;
@@ -173,7 +173,7 @@ export async function PUT(
             id,
             updateData,
             { new: true, runValidators: true }
-        ).lean();
+        ).lean() as any;
 
         if (!updatedSale) {
             return NextResponse.json({ error: "Sale not found" }, { status: 404 });
@@ -198,7 +198,7 @@ export async function PUT(
         };
 
         return NextResponse.json(response, { status: 200 });
-    } catch (error: any) {
+    } catch (error) {
         console.error("Error updating sale:", error);
         return NextResponse.json(
             { error: "Failed to update sale" },
@@ -225,7 +225,7 @@ export async function DELETE(
             { message: "Sale deleted successfully" },
             { status: 200 }
         );
-    } catch (error: any) {
+    } catch (error) {
         console.error("Error deleting sale:", error);
         return NextResponse.json(
             { error: "Failed to delete sale" },

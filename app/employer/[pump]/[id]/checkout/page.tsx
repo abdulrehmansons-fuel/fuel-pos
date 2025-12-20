@@ -37,7 +37,7 @@ export default function CheckoutPage() {
     const employerId = params?.id as string;
 
     const [pumpDetails, setPumpDetails] = useState<{ _id: string; pumpName: string; location?: string } | null>(null);
-    const [completedSaleData, setCompletedSaleData] = useState<any>(null); // Store backend response
+    const [completedSaleData, setCompletedSaleData] = useState<{ _id: string; createdAt: string } | null>(null); // Store backend response
 
     // Get sale data from localStorage
     const [saleItems, setSaleItems] = useState<SaleItem[]>([]);

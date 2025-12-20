@@ -1,7 +1,7 @@
 import FuelPumpView from "../../_components/viewPage";
 
 type PageProps = {
-    params: { id: string };
+    params: Promise<{ id: string }>;
 };
 
 export default async function Page({ params }: PageProps) {

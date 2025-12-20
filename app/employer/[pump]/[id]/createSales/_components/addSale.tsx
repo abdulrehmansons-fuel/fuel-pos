@@ -13,9 +13,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Trash2, ShoppingCart, Droplet, Calculator, Info } from "lucide-react";
+import { ShoppingCart, Droplet, Calculator, Info } from "lucide-react";
 import { toast } from "sonner";
 
 interface SaleItem {

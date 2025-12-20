@@ -2,8 +2,6 @@
 
 import connectDB from "@/lib/db";
 import Sale from "@/models/Sale";
-import FuelPump from "@/models/FuelPump";
-import User from "@/models/User";
 
 export async function getSalesByEmployer(employerId: string) {
     try {

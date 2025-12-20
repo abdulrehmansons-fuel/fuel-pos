@@ -181,7 +181,7 @@ export default function EmployerSalesList() {
                                 </TableRow>
                             ) : (
                                 filteredSales.map((sale) => {
-                                    const totalLiters = sale.items.reduce((sum: number, item: any) => {
+                                    const totalLiters = sale.items.reduce((sum: number, item: { unit: string; quantity: number }) => {
                                         const liters = item.unit === "L" ? item.quantity : item.unit === "mL" ? item.quantity / 1000 : 0;
                                         return sum + liters;
                                     }, 0);
@@ -192,7 +192,7 @@ export default function EmployerSalesList() {
                                                 SALE-{sale._id.slice(-6).toUpperCase()}
                                             </TableCell>
                                             <TableCell className="text-[#020617] max-w-[200px]">
-                                                {sale.items.map((item: any) => item.productName).join(", ")}
+                                                {sale.items.map((item: { productName: string }) => item.productName).join(", ")}
                                             </TableCell>
                                             <TableCell className="text-center font-medium text-[#020617]">
                                                 {totalLiters.toFixed(2)} L

@@ -23,8 +23,8 @@ interface SaleItem {
 
 interface Sale {
     _id: string;
-    employerId: any;
-    pumpId: any;
+    employerId: { fullName: string; email: string } | string;
+    pumpId: { pumpName: string; location: string } | string;
     items: SaleItem[];
     subtotal: number;
     tax: number;
@@ -114,7 +114,7 @@ export default function EmployerEditSale() {
                 body: JSON.stringify({
                     amountPaid: updatedAmountPaid,
                     notes: paymentNotes || `Additional payment of ₨${newPayment}`,
-                    performedBy: `Employer: ${sale.employerId?.fullName || "Muhammad Sarim"}`,
+                    performedBy: `Employer: ${typeof sale.employerId === 'object' ? sale.employerId?.fullName : "Muhammad Sarim"}`,
                 }),
             });
 

@@ -49,19 +49,19 @@ export default function ReportsMainPage() {
                 ]);
 
                 // Map Sales
-                const mappedSales = (Array.isArray(sales) ? sales : []).map((s: any) => ({
+                const mappedSales = (Array.isArray(sales) ? sales : []).map((s: { id?: string; _id?: string; createdAt?: string; items?: { category?: string; quantityInLiters?: number; quantity?: number }[]; grandTotal?: number; pumpId?: { pumpName?: string; _id?: string } | string; status?: string }) => ({
                     orderId: s.id || (s._id ? s._id.slice(-6).toUpperCase() : "N/A"),
-                    date: s.createdAt,
+                    date: s.createdAt || "",
                     fuelType: s.items?.[0]?.category || "N/A",
-                    quantity: s.items?.reduce((sum: number, item: any) => sum + (item.quantityInLiters || item.quantity || 0), 0) || 0,
+                    quantity: s.items?.reduce((sum: number, item: { quantityInLiters?: number; quantity?: number }) => sum + (item.quantityInLiters || item.quantity || 0), 0) || 0,
                     totalPrice: s.grandTotal || 0,
-                    pump: s.pumpId?.pumpName || s.pumpId || "N/A",
+                    pump: (typeof s.pumpId === 'object' ? s.pumpId?.pumpName : s.pumpId) || "N/A",
                     status: s.status || "Completed",
-                    pumpId: s.pumpId?._id || s.pumpId,
+                    pumpId: (typeof s.pumpId === 'object' ? s.pumpId?._id : s.pumpId) || "",
                 }));
 
                 // Map Employers
-                const mappedEmployers = (Array.isArray(employers) ? employers : []).map((e: any) => ({
+                const mappedEmployers = (Array.isArray(employers) ? employers : []).map((e: { fullName: string; fuelPump?: string; role?: string; email: string; joiningDate: string; status?: string; monthlySalary?: number }) => ({
                     employerName: e.fullName,
                     pump: e.fuelPump || "N/A",
                     role: e.role || "Employee",
@@ -73,7 +73,7 @@ export default function ReportsMainPage() {
                 }));
 
                 // Map Pumps
-                const mappedPumps = (Array.isArray(pumps) ? pumps : []).map((p: any) => ({
+                const mappedPumps = (Array.isArray(pumps) ? pumps : []).map((p: { _id?: string; pumpName: string; fuelProducts: string[] | string; status?: string; updatedAt?: string; createdAt?: string }) => ({
                     pumpId: p._id ? p._id.slice(-6).toUpperCase() : "N/A",
                     location: p.pumpName,
                     fuelType: Array.isArray(p.fuelProducts) ? p.fuelProducts.join(", ") : p.fuelProducts || "N/A",
@@ -83,7 +83,7 @@ export default function ReportsMainPage() {
                 }));
 
                 // Map Expenses
-                const mappedExpenses = (Array.isArray(expenses) ? expenses : []).map((ex: any) => ({
+                const mappedExpenses = (Array.isArray(expenses) ? expenses : []).map((ex: { _id?: string; date: string; expenseType: string; amount: string | number; expenseTitle: string; pump?: string }) => ({
                     expenseId: ex._id ? ex._id.slice(-6).toUpperCase() : "N/A",
                     date: ex.date,
                     category: ex.expenseType,
@@ -94,7 +94,7 @@ export default function ReportsMainPage() {
                 }));
 
                 // Map Stocks
-                const mappedStocks = (Array.isArray(stocks) ? stocks : []).map((st: any) => ({
+                const mappedStocks = (Array.isArray(stocks) ? stocks : []).map((st: { fuelType: string; quantity: string | number; salePricePerLiter: string | number; pump?: string; updatedAt?: string; createdAt?: string }) => ({
                     fuelType: st.fuelType,
                     quantity: Number(st.quantity) || 0,
                     price: Number(st.salePricePerLiter) || 0,
@@ -112,7 +112,7 @@ export default function ReportsMainPage() {
                 });
 
                 if (Array.isArray(pumps)) {
-                    setPumpsList(pumps.map((p: any) => p.pumpName));
+                    setPumpsList(pumps.map((p: { pumpName: string }) => p.pumpName));
                 }
 
             } catch (error) {

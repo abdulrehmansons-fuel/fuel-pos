@@ -95,10 +95,10 @@ export async function POST(req: NextRequest) {
         });
 
         return NextResponse.json(newSale, { status: 201 });
-    } catch (error: any) {
+    } catch (error) {
         console.error("Error creating sale:", error);
         return NextResponse.json(
-            { error: error.message || "Failed to create sale" },
+            { error: (error as Error).message || "Failed to create sale" },
             { status: 500 }
         );
     }
@@ -113,7 +113,7 @@ export async function GET(req: NextRequest) {
         const status = searchParams.get("status");
         const paymentStatus = searchParams.get("paymentStatus");
 
-        const query: any = {};
+        const query: { pumpId?: string; employerId?: string; status?: string; paymentStatus?: string } = {};
 
         // Mongoose will automatically convert string IDs to ObjectId
         if (pumpId && pumpId !== 'undefined') {
@@ -129,7 +129,7 @@ export async function GET(req: NextRequest) {
 
         const sales = await Sale.find(query)
             .sort({ createdAt: -1 })
-            .lean(); // Use lean() for better performance
+            .lean() as ({ pumpId?: string | { _id: any }; employerId?: string | { _id: any } } & Record<string, any>)[]; // Use lean() for better performance
 
         // Manually fetch and attach pump and employer details to avoid populate schema issues
         const pumpIds = [...new Set(sales.map(s => s.pumpId?.toString()).filter(Boolean))];
@@ -152,7 +152,7 @@ export async function GET(req: NextRequest) {
         console.log(`Found ${populatedSales.length} sales`); // Debug log
 
         return NextResponse.json(populatedSales, { status: 200 });
-    } catch (error: any) {
+    } catch (error) {
         console.error("Error fetching sales:", error);
         return NextResponse.json(
             { error: "Failed to fetch sales" },
