@@ -20,8 +20,6 @@ export function SalesReport({ salesData }: SalesReportProps) {
   // Calculate metrics
   const totalRevenue = salesData.reduce((sum, sale) => sum + sale.totalPrice, 0);
   const totalOrders = salesData.length;
-  const refundOrders = salesData.filter((s) => s.status === "Refunded").length;
-  const refundAmount = salesData.filter((s) => s.status === "Refunded").reduce((sum, s) => sum + s.totalPrice, 0);
   const avgOrderValue = totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 0;
 
   // Prepare chart data
@@ -51,6 +49,7 @@ export function SalesReport({ salesData }: SalesReportProps) {
       <head>
         <title>Sales Report</title>
         <meta charset="UTF-8">
+        <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2314b8a6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 3h10v18H4z'/%3E%3Cpath d='M14 7h2a2 2 0 0 1 2 2v7'/%3E%3Cpath d='M9 17h6'/%3E%3C/svg%3E" />
         <style>
           * { box-sizing: border-box; }
           body { 
@@ -174,14 +173,6 @@ export function SalesReport({ salesData }: SalesReportProps) {
               <div class="metric-label">📈 Avg Order Value</div>
               <div class="metric-value">${formatCurrency(avgOrderValue)}</div>
             </div>
-            <div class="metric">
-              <div class="metric-label">⚠️ Refund Orders</div>
-              <div class="metric-value">${refundOrders}</div>
-            </div>
-            <div class="metric">
-              <div class="metric-label">💸 Refund Amount</div>
-              <div class="metric-value negative">${formatCurrency(refundAmount)}</div>
-            </div>
           </div>
         </div>
 
@@ -235,7 +226,7 @@ export function SalesReport({ salesData }: SalesReportProps) {
   return (
     <div className="space-y-4">
       {/* Metric Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Sales</CardTitle>
@@ -266,28 +257,6 @@ export function SalesReport({ salesData }: SalesReportProps) {
           <CardContent>
             <div className="text-2xl font-bold">₨ {avgOrderValue.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">+4.1% from last month</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Refund Orders</CardTitle>
-            <AlertCircle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{refundOrders}</div>
-            <p className="text-xs text-muted-foreground">-2.3% from last month</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Refund Amount</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">₨ {refundAmount.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">-5.7% from last month</p>
           </CardContent>
         </Card>
       </div>
