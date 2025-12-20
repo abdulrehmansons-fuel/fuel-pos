@@ -1,43 +1,53 @@
 "use client";
+import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ArrowLeft } from "lucide-react";
+import { Spinner } from "@/components/ui/spinner";
 
-// Mock sale data
-const mockSale = {
-    id: "SALE-1718123456789",
-    pumpName: "Fuel Pump A",
-    employerName: "Ali Khan",
-    paymentMethod: "Cash",
-    status: "Approved" as "Pending" | "Approved" | "Rejected",
-    createdAt: "Dec 10, 2024 — 02:45 PM",
-    items: [
-        { id: "1", name: "Regular Petrol", category: "Petrol", quantity: 15, rate: 290, total: 4350 },
-        { id: "2", name: "Premium Diesel", category: "Diesel", quantity: 10, rate: 320, total: 3200 },
-        { id: "3", name: "Mobil 1 5W-30", category: "Engine Oil", quantity: 2, rate: 2500, total: 5000 },
-    ],
-    subtotal: 12550,
-    tax: 0,
-    grandTotal: 12550,
-    paidAmount: 12550,
-    notes: "",
-    logs: [
-        {
-            date: "Dec 10, 2024 — 02:45 PM",
-            amount: 10000,
-            action: "Initial Sale",
-            performedBy: "Employer: Ali Khan"
-        },
-        {
-            date: "Dec 10, 2024 — 05:30 PM",
-            amount: 2550,
-            action: "Payment Added",
-            performedBy: "Admin: Manager"
-        }
-    ]
-};
+interface SaleItem {
+    productName: string;
+    category: string;
+    quantity: number;
+    unit: string;
+    rate: number;
+    total: number;
+}
+
+interface PaymentLog {
+    action: string;
+    amount: number;
+    paymentMethod: string;
+    performedBy: string;
+    notes?: string;
+    timestamp: string;
+}
+
+interface Sale {
+    _id: string;
+    employerId: {
+        fullName: string;
+        email: string;
+    };
+    pumpId: {
+        pumpName: string;
+        location: string;
+    };
+    items: SaleItem[];
+    subtotal: number;
+    tax: number;
+    grandTotal: number;
+    amountPaid: number;
+    changeReturned: number;
+    paymentStatus: string;
+    paymentMethod: string;
+    notes?: string;
+    status: "Pending" | "Approved" | "Rejected";
+    paymentHistory: PaymentLog[];
+    createdAt: string;
+}
 
 const getStatusBadge = (status: "Pending" | "Approved" | "Rejected") => {
     const styles = {
@@ -57,10 +67,49 @@ export default function EmployerSaleView() {
     const params = useParams();
     const pumpId = params?.pump as string;
     const employerId = params?.id as string;
-    // const saleId = params?.saleId as string;
+    const saleId = params?.saleId as string;
 
-    // In real app, fetch sale by saleId
-    const sale = mockSale;
+    const [sale, setSale] = useState<Sale | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchSale = async () => {
+            try {
+                setLoading(true);
+                const response = await fetch(`/api/sales/${saleId}`);
+                if (!response.ok) throw new Error("Failed to fetch sale");
+                const data = await response.json();
+                setSale(data);
+            } catch (error) {
+                console.error("Error fetching sale:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        if (saleId) {
+            fetchSale();
+        }
+    }, [saleId]);
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-[#f1f5f9] flex items-center justify-center">
+                <div className="flex flex-col items-center">
+                    <Spinner className="h-12 w-12 text-[#14b8a6] mb-4" />
+                    <p className="text-[#64748b]">Loading sale details...</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (!sale) {
+        return (
+            <div className="min-h-screen bg-[#f1f5f9] flex items-center justify-center">
+                <p className="text-[#64748b]">Sale not found</p>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-[#f1f5f9]">
@@ -79,14 +128,14 @@ export default function EmployerSaleView() {
                         </Button>
                         <div>
                             <h1 className="text-2xl font-bold text-[#020617]">Sale Details</h1>
-                            <p className="text-sm text-[#64748b]">#{sale.id}</p>
+                            <p className="text-sm text-[#64748b]">SALE-{sale._id.slice(-6).toUpperCase()}</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-3">
                         <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => router.push(`/employer/${pumpId}/${employerId}/sales/${sale.id}/edit`)}
+                            onClick={() => router.push(`/employer/${pumpId}/${employerId}/sales/${saleId}/edit`)}
                         >
                             Edit Sale
                         </Button>
@@ -104,15 +153,19 @@ export default function EmployerSaleView() {
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                             <div>
                                 <p className="text-xs uppercase tracking-wide text-[#64748b] mb-1">Sale ID</p>
-                                <p className="text-sm font-semibold text-[#020617]">{sale.id}</p>
+                                <p className="text-sm font-semibold text-[#020617]">SALE-{sale._id.slice(-6).toUpperCase()}</p>
                             </div>
                             <div>
                                 <p className="text-xs uppercase tracking-wide text-[#64748b] mb-1">Pump Name</p>
-                                <p className="text-sm font-semibold text-[#020617]">{sale.pumpName}</p>
+                                <p className="text-sm font-semibold text-[#020617]">
+                                    {typeof sale.pumpId === 'object' && sale.pumpId?.pumpName ? sale.pumpId.pumpName : 'N/A'}
+                                </p>
                             </div>
                             <div>
                                 <p className="text-xs uppercase tracking-wide text-[#64748b] mb-1">Employer</p>
-                                <p className="text-sm font-semibold text-[#020617]">{sale.employerName}</p>
+                                <p className="text-sm font-semibold text-[#020617]">
+                                    {typeof sale.employerId === 'object' && sale.employerId?.fullName ? sale.employerId.fullName : 'N/A'}
+                                </p>
                             </div>
                             <div>
                                 <p className="text-xs uppercase tracking-wide text-[#64748b] mb-1">Payment Method</p>
@@ -124,7 +177,9 @@ export default function EmployerSaleView() {
                             </div>
                             <div>
                                 <p className="text-xs uppercase tracking-wide text-[#64748b] mb-1">Created At</p>
-                                <p className="text-sm font-semibold text-[#020617]">{sale.createdAt}</p>
+                                <p className="text-sm font-semibold text-[#020617]">
+                                    {new Date(sale.createdAt).toLocaleString()}
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -144,15 +199,17 @@ export default function EmployerSaleView() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {sale.items.map((item) => (
-                                    <TableRow key={item.id} className="hover:bg-gray-50">
+                                {sale.items.map((item, index) => (
+                                    <TableRow key={index} className="hover:bg-gray-50">
                                         <TableCell>
                                             <div>
-                                                <p className="font-medium text-[#020617]">{item.name}</p>
+                                                <p className="font-medium text-[#020617]">{item.productName}</p>
                                                 <p className="text-xs text-[#64748b]">{item.category}</p>
                                             </div>
                                         </TableCell>
-                                        <TableCell className="text-center text-[#020617]">{item.quantity}</TableCell>
+                                        <TableCell className="text-center text-[#020617]">
+                                            {item.quantity} {item.unit}
+                                        </TableCell>
                                         <TableCell className="text-center text-[#020617]">₨ {item.rate.toLocaleString()}</TableCell>
                                         <TableCell className="text-right font-medium text-[#020617]">₨ {item.total.toLocaleString()}</TableCell>
                                     </TableRow>
@@ -192,48 +249,52 @@ export default function EmployerSaleView() {
                         </p>
                     </div>
 
-                    {/* Logs Section */}
+                    {/* Payment Logs Section */}
                     <div>
                         <h2 className="text-sm font-semibold text-[#020617] mb-4 pb-2 border-b border-gray-100">
                             Payment Logs
                         </h2>
                         <div className="space-y-4">
+                            {sale.paymentHistory && sale.paymentHistory.length > 0 ? (
+                                sale.paymentHistory.map((log, index) => (
+                                    <div key={index} className="flex gap-4 relative">
+                                        {/* Timeline line */}
+                                        {index !== sale.paymentHistory.length - 1 && (
+                                            <div className="absolute left-[19px] top-8 bottom-[-16px] w-[2px] bg-gray-100" />
+                                        )}
 
-                            {sale.logs?.map((log, index) => (
-                                <div key={index} className="flex gap-4 relative">
-                                    {/* Timeline line */}
-                                    {index !== (sale.logs?.length || 0) - 1 && (
-                                        <div className="absolute left-[19px] top-8 bottom-[-16px] w-[2px] bg-gray-100" />
-                                    )}
-
-                                    <div className="h-10 w-10 shrink-0 rounded-full bg-blue-50 flex items-center justify-center border border-blue-100">
-                                        <div className="h-2.5 w-2.5 rounded-full bg-blue-600" />
-                                    </div>
-                                    <div className="pt-2 w-full">
-                                        <div className="flex justify-between items-start">
-                                            <div>
-                                                <p className="font-medium text-[#020617]">{log.action}</p>
-                                                <p className="text-xs text-[#64748b] mt-0.5">by {log.performedBy}</p>
-                                            </div>
-                                            <div className="text-right">
-                                                <p className="font-semibold text-[#14b8a6]">
-                                                    + ₨ {log.amount.toLocaleString()}
-                                                </p>
-                                                <p className="text-xs text-[#64748b] mt-0.5">{log.date}</p>
+                                        <div className="h-10 w-10 shrink-0 rounded-full bg-blue-50 flex items-center justify-center border border-blue-100">
+                                            <div className="h-2.5 w-2.5 rounded-full bg-blue-600" />
+                                        </div>
+                                        <div className="pt-2 w-full">
+                                            <div className="flex justify-between items-start">
+                                                <div>
+                                                    <p className="font-medium text-[#020617]">{log.action}</p>
+                                                    <p className="text-xs text-[#64748b] mt-0.5">by {log.performedBy}</p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="font-semibold text-[#14b8a6]">
+                                                        + ₨ {log.amount.toLocaleString()}
+                                                    </p>
+                                                    <p className="text-xs text-[#64748b] mt-0.5">
+                                                        {new Date(log.timestamp).toLocaleString()}
+                                                    </p>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-                            ))}
+                                ))
+                            ) : (
+                                <p className="text-sm text-[#64748b]">No payment history yet</p>
+                            )}
 
                             <div className="mt-4 pt-4 border-t border-gray-100 flex justify-between items-center bg-gray-50 p-4 rounded-lg">
                                 <div>
                                     <p className="text-xs text-[#64748b] uppercase font-semibold">Remaining Balance</p>
                                 </div>
                                 <div className="text-right">
-                                    <p className={`text-xl font-bold ${(sale.grandTotal - (sale.paidAmount || 0)) > 0 ? "text-red-500" : "text-green-600"
-                                        }`}>
-                                        ₨ {(sale.grandTotal - (sale.paidAmount || 0)).toLocaleString()}
+                                    <p className={`text-xl font-bold ${(sale.grandTotal - sale.amountPaid) > 0 ? "text-red-500" : "text-green-600"}`}>
+                                        ₨ {(sale.grandTotal - sale.amountPaid).toLocaleString()}
                                     </p>
                                 </div>
                             </div>

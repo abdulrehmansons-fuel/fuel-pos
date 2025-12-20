@@ -26,6 +26,7 @@ interface Employer {
   id: string; // Display ID (EMP-XXX)
   _id: string; // Database ID
   name: string;
+  username: string;
   email: string;
   phone: string;
   salary: number;
@@ -50,10 +51,11 @@ const Employers = () => {
         if (res.ok) {
           const data = await res.json();
           // Map API data to UI interface
-          const mappedData = data.map((emp: { employerId: string; _id: string; fullName: string; email: string; mobile: string; monthlySalary: number; fuelPump: string; status: "Active" | "Inactive" }) => ({
+          const mappedData = data.map((emp: { employerId: string; _id: string; fullName: string; username: string; email: string; mobile: string; monthlySalary: number; fuelPump: string; status: "Active" | "Inactive" }) => ({
             id: emp.employerId || emp._id, // Use custom ID if available, else fallback
             _id: emp._id, // Keep real _id for links
             name: emp.fullName,
+            username: emp.username,
             email: emp.email,
             phone: emp.mobile,
             salary: emp.monthlySalary,
@@ -87,7 +89,8 @@ const Employers = () => {
     const matchesSearch =
       employer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       employer.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      employer.email.toLowerCase().includes(searchQuery.toLowerCase());
+      employer.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      employer.username.toLowerCase().includes(searchQuery.toLowerCase()); // Added username to search
 
     const matchesStatus = statusFilter === "All" || employer.status.toLowerCase() === statusFilter.toLowerCase();
     const matchesPump = pumpFilter === "All" || employer.fuelPump === pumpFilter;
@@ -186,6 +189,7 @@ const Employers = () => {
                 <TableRow className="bg-gray-50">
                   <TableHead className="text-xs text-[#64748b] font-semibold">Employer ID</TableHead>
                   <TableHead className="text-xs text-[#64748b] font-semibold">Name</TableHead>
+                  <TableHead className="text-xs text-[#64748b] font-semibold">Username</TableHead> {/* Added Username header */}
                   <TableHead className="text-xs text-[#64748b] font-semibold">Email</TableHead>
                   <TableHead className="text-xs text-[#64748b] font-semibold">Phone Number</TableHead>
                   <TableHead className="text-xs text-[#64748b] font-semibold">Salary (Rs.)</TableHead>
@@ -197,7 +201,7 @@ const Employers = () => {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-10">
+                    <TableCell colSpan={9} className="text-center py-10">
                       <div className="flex justify-center items-center">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#14b8a6]"></div>
                       </div>
@@ -208,6 +212,7 @@ const Employers = () => {
                     <TableRow key={employer._id} className="hover:bg-gray-100">
                       <TableCell className="text-sm text-[#020617] font-medium">{employer.id.slice(-6).toUpperCase()}</TableCell>
                       <TableCell className="text-sm text-[#020617]">{employer.name}</TableCell>
+                      <TableCell className="text-sm text-[#020617] font-semibold">{employer.username || "—"}</TableCell>
                       <TableCell className="text-sm text-[#64748b]">{employer.email}</TableCell>
                       <TableCell className="text-sm text-[#64748b]">{employer.phone}</TableCell>
                       <TableCell className="text-sm text-[#020617] font-medium">

@@ -15,7 +15,8 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Trash2, ShoppingCart, Droplet, Calculator } from "lucide-react";
+import { Plus, Trash2, ShoppingCart, Droplet, Calculator, Info } from "lucide-react";
+import { toast } from "sonner";
 
 interface SaleItem {
     id: string;
@@ -34,6 +35,7 @@ interface Product {
     rate: number;
     unit: "L" | "mL" | "pcs";
     defaultUnit: "L" | "mL" | "pcs";
+    totalQuantity: number;
 }
 
 
@@ -44,7 +46,6 @@ export default function CreateSale() {
     const pumpId = params?.pump as string;
     const employerId = params?.id as string;
 
-    const [items, setItems] = useState<SaleItem[]>([]);
     const [products, setProducts] = useState<Product[]>([]);
 
     useEffect(() => {
@@ -56,6 +57,7 @@ export default function CreateSale() {
         };
         fetchStocks();
     }, [pumpId]);
+
     const [currentItem, setCurrentItem] = useState({
         productName: "",
         category: "",
@@ -64,8 +66,6 @@ export default function CreateSale() {
         unit: "L" as "L" | "mL" | "pcs",
         rate: 0,
     });
-    const [paymentMethod, setPaymentMethod] = useState("Cash");
-    const [notes, setNotes] = useState("");
 
     const handleProductSelect = (productName: string) => {
         const product = products.find((p) => p.name === productName);
@@ -125,8 +125,6 @@ export default function CreateSale() {
         });
     };
 
-
-
     const formatQuantityDisplay = (quantity: number, unit: "L" | "mL" | "pcs"): string => {
         if (unit === "L") {
             return `${quantity.toFixed(3)} L`;
@@ -136,15 +134,27 @@ export default function CreateSale() {
         return `${quantity} pcs`;
     };
 
-    const addItem = () => {
-        if (!currentItem.productName || currentItem.totalAmount <= 0 || currentItem.rate <= 0) {
+    const subtotal = currentItem.totalAmount;
+    const tax = 0;
+    const grandTotal = subtotal + tax;
+
+    const handleSubmit = () => {
+        if (!currentItem.productName || currentItem.totalAmount <= 0) {
             alert("Please select a product and enter a valid amount");
             return;
         }
 
-        const quantityInLiters = currentItem.totalAmount / currentItem.rate;
+        // Stock Validation
+        const product = products.find(p => p.name === currentItem.productName);
+        const quantityInLiters = currentItem.totalAmount / (currentItem.rate || 1);
 
-        const newItem: SaleItem = {
+        if (product && quantityInLiters > product.totalQuantity) {
+            toast.error(`Insufficient stock! Available: ${product.totalQuantity.toFixed(2)} L`);
+            return;
+        }
+
+        // Prepare single item as an array for compatibility with checkout page
+        const singleItem: SaleItem = {
             id: Date.now().toString(),
             productName: currentItem.productName,
             category: currentItem.category,
@@ -155,36 +165,8 @@ export default function CreateSale() {
             total: currentItem.totalAmount,
         };
 
-        setItems([...items, newItem]);
-        setCurrentItem({
-            productName: "",
-            category: "",
-            totalAmount: 0,
-            quantity: 0,
-            unit: "L",
-            rate: 0,
-        });
-    };
-
-    const removeItem = (id: string) => {
-        setItems(items.filter((item) => item.id !== id));
-    };
-
-    const subtotal = items.reduce((sum, item) => sum + item.total, 0);
-    const tax = 0;
-    const grandTotal = subtotal + tax;
-
-    const handleSubmit = () => {
-        if (items.length === 0) {
-            alert("Please add at least one item");
-            return;
-        }
-
-        // Store sale data in localStorage for checkout page
         const saleData = {
-            items,
-            paymentMethod,
-            notes,
+            items: [singleItem],
             subtotal,
             tax,
             grandTotal,
@@ -207,13 +189,12 @@ export default function CreateSale() {
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Left Column - Add Items */}
+                    {/* Left Column - Product Details */}
                     <div className="lg:col-span-2 space-y-6">
-                        {/* Add Item Card */}
                         <Card className="p-6 bg-white border shadow-sm rounded-xl">
                             <h2 className="text-lg font-semibold text-[#020617] mb-4 flex items-center gap-2">
                                 <ShoppingCart className="h-5 w-5 text-[#14b8a6]" />
-                                Add Item
+                                Sale Details
                             </h2>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -275,6 +256,7 @@ export default function CreateSale() {
                                         onChange={(e) => handleAmountChange(Number(e.target.value))}
                                         className="mt-1 text-lg font-semibold"
                                         placeholder="Enter amount in rupees"
+                                        autoFocus
                                     />
                                     <p className="text-xs text-[#64748b] mt-1">
                                         Example: Enter ₨150 for diesel at ₨300/L = 0.5L (500mL)
@@ -300,130 +282,49 @@ export default function CreateSale() {
 
                                 <div>
                                     <Label>Calculated Quantity</Label>
-                                    <div className="mt-1 h-10 px-3 py-2 bg-[#14b8a6]/10 border border-[#14b8a6]/30 rounded-md flex items-center">
+                                    <div className="mt-1 h-10 px-3 py-2 bg-[#14b8a6]/10 border border-[#14b8a6]/30 rounded-md flex items-center justify-between">
                                         <span className="text-lg font-bold text-[#14b8a6]">
                                             {currentItem.quantity > 0 ? formatQuantityDisplay(currentItem.quantity, currentItem.unit) : "0"}
                                         </span>
+                                        {currentItem.productName && (
+                                            <div className="flex items-center gap-1 text-[10px] bg-white px-2 py-0.5 rounded border border-[#14b8a6]/20">
+                                                <Info className="h-3 w-3 text-[#14b8a6]" />
+                                                <span className="text-[#64748b]">Available: </span>
+                                                <span className="font-bold text-[#020617]">
+                                                    {products.find(p => p.name === currentItem.productName)?.totalQuantity.toFixed(2)} L
+                                                </span>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>
-
-                            <Button
-                                onClick={addItem}
-                                className="mt-4 w-full bg-[#14b8a6] hover:bg-[#0d9488] text-white"
-                                disabled={!currentItem.productName || currentItem.totalAmount <= 0}
-                            >
-                                <Plus className="h-4 w-4 mr-2" />
-                                Add Item to Sale
-                            </Button>
                         </Card>
-
-                        {/* Items List */}
-                        {items.length > 0 && (
-                            <Card className="p-6 bg-white border shadow-sm rounded-xl">
-                                <h2 className="text-lg font-semibold text-[#020617] mb-4">Sale Items ({items.length})</h2>
-                                <div className="overflow-x-auto">
-                                    <Table>
-                                        <TableHeader>
-                                            <TableRow className="bg-gray-50">
-                                                <TableHead>Product</TableHead>
-                                                <TableHead className="text-center">Quantity</TableHead>
-                                                <TableHead className="text-center">Rate (₨)</TableHead>
-                                                <TableHead className="text-right">Total (₨)</TableHead>
-                                                <TableHead className="text-right">Action</TableHead>
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {items.map((item) => (
-                                                <TableRow key={item.id}>
-                                                    <TableCell>
-                                                        <div>
-                                                            <p className="font-medium text-[#020617]">{item.productName}</p>
-                                                            <p className="text-xs text-[#64748b]">{item.category}</p>
-                                                        </div>
-                                                    </TableCell>
-                                                    <TableCell className="text-center">
-                                                        <span className="font-medium">{formatQuantityDisplay(item.quantity, item.unit)}</span>
-                                                    </TableCell>
-                                                    <TableCell className="text-center">₨ {item.rate.toLocaleString()}/{item.unit}</TableCell>
-                                                    <TableCell className="text-right font-medium text-[#14b8a6]">
-                                                        ₨ {item.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                    </TableCell>
-                                                    <TableCell className="text-right">
-                                                        <Button
-                                                            size="sm"
-                                                            variant="ghost"
-                                                            onClick={() => removeItem(item.id)}
-                                                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                                        >
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </Button>
-                                                    </TableCell>
-                                                </TableRow>
-                                            ))}
-                                        </TableBody>
-                                    </Table>
-                                </div>
-                            </Card>
-                        )}
                     </div>
 
                     {/* Right Column - Summary */}
                     <div className="space-y-6">
-                        {/* Payment Details */}
-                        <Card className="p-6 bg-white border shadow-sm rounded-xl">
-                            <h2 className="text-lg font-semibold text-[#020617] mb-4">Payment Details</h2>
-
-                            <div className="space-y-4">
-                                <div>
-                                    <Label htmlFor="payment">Payment Method</Label>
-                                    <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-                                        <SelectTrigger className="mt-1">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent className="bg-white">
-                                            <SelectItem value="Cash">Cash</SelectItem>
-                                            <SelectItem value="Card">Card</SelectItem>
-                                            <SelectItem value="Mobile Payment">Mobile Payment</SelectItem>
-                                            <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                <div>
-                                    <Label htmlFor="notes">Notes (Optional)</Label>
-                                    <Textarea
-                                        id="notes"
-                                        value={notes}
-                                        onChange={(e) => setNotes(e.target.value)}
-                                        placeholder="Add any additional notes..."
-                                        className="mt-1"
-                                        rows={3}
-                                    />
-                                </div>
-                            </div>
-                        </Card>
-
                         {/* Bill Summary */}
                         <Card className="p-6 bg-white border shadow-sm rounded-xl">
                             <h2 className="text-lg font-semibold text-[#020617] mb-4">Bill Summary</h2>
 
                             <div className="space-y-3">
                                 <div className="flex justify-between text-sm">
-                                    <span className="text-[#64748b]">Items</span>
-                                    <span className="text-[#020617] font-medium">{items.length}</span>
+                                    <span className="text-[#64748b]">Product</span>
+                                    <span className="text-[#020617] font-medium">{currentItem.productName || "-"}</span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-[#64748b]">Quantity</span>
+                                    <span className="text-[#020617] font-medium">
+                                        {currentItem.quantity > 0 ? formatQuantityDisplay(currentItem.quantity, currentItem.unit) : "-"}
+                                    </span>
                                 </div>
                                 <div className="flex justify-between text-sm">
                                     <span className="text-[#64748b]">Subtotal</span>
                                     <span className="text-[#020617] font-medium">₨ {subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                 </div>
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-[#64748b]">Tax</span>
-                                    <span className="text-[#020617] font-medium">₨ {tax.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                </div>
                                 <div className="border-t border-gray-200 pt-3">
                                     <div className="flex justify-between">
-                                        <span className="text-lg font-semibold text-[#020617]">Grand Total</span>
+                                        <span className="text-lg font-semibold text-[#020617]">Total To Pay</span>
                                         <span className="text-xl font-bold text-[#14b8a6]">
                                             ₨ {grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                         </span>
@@ -433,10 +334,10 @@ export default function CreateSale() {
 
                             <Button
                                 onClick={handleSubmit}
-                                disabled={items.length === 0}
-                                className="mt-6 w-full bg-[#14b8a6] hover:bg-[#0d9488] text-white disabled:opacity-50"
+                                disabled={!currentItem.productName || currentItem.totalAmount <= 0}
+                                className="mt-6 w-full bg-[#14b8a6] hover:bg-[#0d9488] text-white disabled:opacity-50 h-10"
                             >
-                                Complete Sale
+                                Proceed to Checkout
                             </Button>
                         </Card>
                     </div>

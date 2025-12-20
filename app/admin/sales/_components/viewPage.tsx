@@ -1,6 +1,6 @@
 "use client";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, useParams } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,64 +14,137 @@ import {
 import { ArrowLeft, Check, X } from "lucide-react";
 import { toast } from "sonner";
 
-interface SaleProduct {
-    name: string;
+interface SaleItem {
+    productName: string;
+    category: string;
     quantity: number;
-    price: number;
-    lineTotal: number;
+    unit: string;
+    rate: number;
+    total: number;
 }
 
-interface SaleDetails {
-    id: string;
-    pumpName: string;
-    employerName: string;
-    customerName: string;
+interface PaymentLog {
+    action: string;
+    amount: number;
     paymentMethod: string;
-    status: "pending" | "approved" | "rejected";
-    createdAt: string;
-    products: SaleProduct[];
+    performedBy: string;
+    notes?: string;
+    timestamp: string;
+}
+
+interface Sale {
+    _id: string;
+    employerId: any;
+    pumpId: any;
+    customerName?: string;
+    customerPhone?: string;
+    items: SaleItem[];
     subtotal: number;
     tax: number;
     grandTotal: number;
-    paidAmount: number;
-    notes: string;
-    logs: {
-        date: string;
-        amount: number;
-        action: string;
-        performedBy: string;
-    }[];
+    amountPaid: number;
+    changeReturned: number;
+    paymentStatus: string;
+    paymentMethod: string;
+    paymentHistory?: PaymentLog[];
+    notes?: string;
+    status: "Pending" | "Approved" | "Rejected";
+    createdAt: string;
 }
 
-const SaleView = ({ data }: { data: SaleDetails }) => {
+export default function AdminSaleView() {
     const router = useRouter();
-    const [status, setStatus] = useState(data.status);
+    const params = useParams();
+    const saleId = params?.id as string;
 
-    const handleApprove = () => {
-        setStatus("approved");
-        toast.success("Sale approved successfully");
+    const [sale, setSale] = useState<Sale | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [actionLoading, setActionLoading] = useState(false);
+
+    useEffect(() => {
+        const fetchSale = async () => {
+            try {
+                setLoading(true);
+                const response = await fetch(`/api/sales/${saleId}`);
+                if (!response.ok) throw new Error("Failed to fetch sale");
+                const data = await response.json();
+                setSale(data);
+            } catch (error) {
+                console.error("Error fetching sale:", error);
+                toast.error("Failed to load sale details");
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        if (saleId) {
+            fetchSale();
+        }
+    }, [saleId]);
+
+    const handleApprove = async () => {
+        if (!sale) return;
+
+        setActionLoading(true);
+        try {
+            const response = await fetch(`/api/sales/${saleId}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ status: "Approved" }),
+            });
+
+            if (!response.ok) throw new Error("Failed to approve sale");
+
+            const updatedSale = await response.json();
+            setSale(updatedSale);
+            toast.success("Sale approved successfully");
+        } catch (error) {
+            console.error("Error approving sale:", error);
+            toast.error("Failed to approve sale");
+        } finally {
+            setActionLoading(false);
+        }
     };
 
-    const handleReject = () => {
-        setStatus("rejected");
-        toast.error("Sale rejected");
+    const handleReject = async () => {
+        if (!sale) return;
+
+        setActionLoading(true);
+        try {
+            const response = await fetch(`/api/sales/${saleId}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ status: "Rejected" }),
+            });
+
+            if (!response.ok) throw new Error("Failed to reject sale");
+
+            const updatedSale = await response.json();
+            setSale(updatedSale);
+            toast.error("Sale rejected");
+        } catch (error) {
+            console.error("Error rejecting sale:", error);
+            toast.error("Failed to reject sale");
+        } finally {
+            setActionLoading(false);
+        }
     };
 
-    const getStatusBadge = (currentStatus: SaleDetails["status"]) => {
-        switch (currentStatus) {
-            case "pending":
+    const getStatusBadge = (status: Sale["status"]) => {
+        switch (status) {
+            case "Pending":
                 return (
                     <span className="px-3 py-1 text-sm font-medium rounded-full bg-yellow-100 text-yellow-700">
                         Pending
                     </span>
                 );
-            case "approved":
+            case "Approved":
                 return (
                     <span className="px-3 py-1 text-sm font-medium rounded-full bg-green-100 text-green-700">
                         Approved
                     </span>
                 );
-            case "rejected":
+            case "Rejected":
                 return (
                     <span className="px-3 py-1 text-sm font-medium rounded-full bg-red-100 text-red-600">
                         Rejected
@@ -79,6 +152,25 @@ const SaleView = ({ data }: { data: SaleDetails }) => {
                 );
         }
     };
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-[#f1f5f9] flex items-center justify-center">
+                <div className="flex flex-col items-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#14b8a6] mb-4"></div>
+                    <p className="text-[#64748b]">Loading sale details...</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (!sale) {
+        return (
+            <div className="min-h-screen bg-[#f1f5f9] flex items-center justify-center">
+                <p className="text-[#64748b]">Sale not found</p>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-[#f1f5f9]">
@@ -99,245 +191,178 @@ const SaleView = ({ data }: { data: SaleDetails }) => {
                     <div className="flex items-center gap-3">
                         <Button
                             variant="outline"
-                            onClick={() => router.push(`/admin/sales/${data.id}/edit`)}
+                            onClick={() => router.push(`/admin/sales/${sale._id}/edit`)}
                         >
                             Edit
                         </Button>
-                        {status === "pending" ? (
+                        {sale.status === "Pending" ? (
                             <>
                                 <Button
                                     onClick={handleApprove}
+                                    disabled={actionLoading}
                                     className="bg-[#22c55e] hover:bg-green-600 text-white gap-2"
                                 >
                                     <Check className="h-4 w-4" />
-                                    Approve
+                                    {actionLoading ? "Approving..." : "Approve"}
                                 </Button>
                                 <Button
                                     onClick={handleReject}
+                                    disabled={actionLoading}
                                     className="bg-[#dc2626] hover:bg-red-700 text-white gap-2"
                                 >
                                     <X className="h-4 w-4" />
-                                    Reject
+                                    {actionLoading ? "Rejecting..." : "Reject"}
                                 </Button>
                             </>
                         ) : (
-                            getStatusBadge(status)
+                            getStatusBadge(sale.status)
                         )}
                     </div>
                 </div>
 
                 {/* Details Card */}
                 <Card className="p-6 bg-white border rounded-xl shadow-sm space-y-6">
-                    {/* Section 1: Basic Sale Info */}
+                    {/* Basic Info */}
                     <div>
-                        <h2 className="text-lg font-semibold text-[#020617] mb-4 pb-2 border-b">
+                        <h2 className="text-sm font-semibold text-[#020617] mb-4 pb-2 border-b border-gray-100">
                             Basic Information
                         </h2>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                             <div>
-                                <p className="text-xs uppercase tracking-wide text-[#64748b] mb-1">
-                                    Sale ID
-                                </p>
-                                <p className="text-base font-semibold text-[#020617]">{data.id}</p>
+                                <p className="text-xs uppercase tracking-wide text-[#64748b] mb-1">Sale ID</p>
+                                <p className="text-sm font-semibold text-[#020617]">SALE-{sale._id.slice(-6).toUpperCase()}</p>
                             </div>
                             <div>
-                                <p className="text-xs uppercase tracking-wide text-[#64748b] mb-1">
-                                    Pump Name
-                                </p>
-                                <p className="text-base font-semibold text-[#020617]">
-                                    {data.pumpName}
+                                <p className="text-xs uppercase tracking-wide text-[#64748b] mb-1">Pump Name</p>
+                                <p className="text-sm font-semibold text-[#020617]">
+                                    {typeof sale.pumpId === 'object' && sale.pumpId?.pumpName ? sale.pumpId.pumpName : 'N/A'}
                                 </p>
                             </div>
                             <div>
-                                <p className="text-xs uppercase tracking-wide text-[#64748b] mb-1">
-                                    Employer Name
-                                </p>
-                                <p className="text-base font-semibold text-[#020617]">
-                                    {data.employerName}
+                                <p className="text-xs uppercase tracking-wide text-[#64748b] mb-1">Employer</p>
+                                <p className="text-sm font-semibold text-[#020617]">
+                                    {typeof sale.employerId === 'object' && sale.employerId?.fullName ? sale.employerId.fullName : 'N/A'}
                                 </p>
                             </div>
                             <div>
-                                <p className="text-xs uppercase tracking-wide text-[#64748b] mb-1">
-                                    Customer Name
-                                </p>
-                                <p className="text-base font-semibold text-[#020617]">
-                                    {data.customerName || "—"}
-                                </p>
+                                <p className="text-xs uppercase tracking-wide text-[#64748b] mb-1">Customer Name</p>
+                                <p className="text-sm font-semibold text-[#020617]">{sale.customerName || "Walk-in"}</p>
                             </div>
                             <div>
-                                <p className="text-xs uppercase tracking-wide text-[#64748b] mb-1">
-                                    Payment Method
-                                </p>
-                                <p className="text-base font-semibold text-[#020617]">
-                                    {data.paymentMethod}
-                                </p>
+                                <p className="text-xs uppercase tracking-wide text-[#64748b] mb-1">Payment Method</p>
+                                <p className="text-sm font-semibold text-[#020617]">{sale.paymentMethod}</p>
                             </div>
                             <div>
-                                <p className="text-xs uppercase tracking-wide text-[#64748b] mb-1">
-                                    Status
-                                </p>
-                                <div className="mt-1">{getStatusBadge(status)}</div>
+                                <p className="text-xs uppercase tracking-wide text-[#64748b] mb-1">Status</p>
+                                {getStatusBadge(sale.status)}
                             </div>
                             <div>
-                                <p className="text-xs uppercase tracking-wide text-[#64748b] mb-1">
-                                    Sale Date & Time
-                                </p>
-                                <p className="text-base font-semibold text-[#020617]">
-                                    {data.createdAt}
+                                <p className="text-xs uppercase tracking-wide text-[#64748b] mb-1">Created At</p>
+                                <p className="text-sm font-semibold text-[#020617]">
+                                    {new Date(sale.createdAt).toLocaleString()}
                                 </p>
                             </div>
                         </div>
                     </div>
 
-                    {/* Section 2: Products */}
+                    {/* Products */}
                     <div>
-                        <h2 className="text-lg font-semibold text-[#020617] mb-4 pb-2 border-b">
-                            Products in this Sale
+                        <h2 className="text-sm font-semibold text-[#020617] mb-4 pb-2 border-b border-gray-100">
+                            Sold Items
                         </h2>
-                        <div className="border rounded-lg overflow-hidden">
-                            <Table>
-                                <TableHeader className="bg-gray-50">
-                                    <TableRow>
-                                        <TableHead className="font-semibold text-[#020617]">
-                                            Product Name
-                                        </TableHead>
-                                        <TableHead className="font-semibold text-[#020617] text-center">
-                                            Quantity
-                                        </TableHead>
-                                        <TableHead className="font-semibold text-[#020617] text-right">
-                                            Price (Rs.)
-                                        </TableHead>
-                                        <TableHead className="font-semibold text-[#020617] text-right">
-                                            Line Total (Rs.)
-                                        </TableHead>
+                        <Table>
+                            <TableHeader className="bg-gray-50">
+                                <TableRow>
+                                    <TableHead className="font-semibold text-[#020617]">Product</TableHead>
+                                    <TableHead className="font-semibold text-[#020617] text-center">Quantity</TableHead>
+                                    <TableHead className="font-semibold text-[#020617] text-right">Rate</TableHead>
+                                    <TableHead className="font-semibold text-[#020617] text-right">Total</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {sale.items.map((item, index) => (
+                                    <TableRow key={index}>
+                                        <TableCell className="font-medium">{item.productName}</TableCell>
+                                        <TableCell className="text-center">{item.quantity} {item.unit}</TableCell>
+                                        <TableCell className="text-right">₨ {item.rate.toLocaleString()}</TableCell>
+                                        <TableCell className="text-right font-semibold">₨ {item.total.toLocaleString()}</TableCell>
                                     </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {data.products.map((product, index) => (
-                                        <TableRow key={index}>
-                                            <TableCell className="text-[#020617] font-medium">
-                                                {product.name}
-                                            </TableCell>
-                                            <TableCell className="text-[#020617] text-center">
-                                                {product.quantity}
-                                            </TableCell>
-                                            <TableCell className="text-[#020617] text-right">
-                                                Rs. {product.price.toLocaleString()}
-                                            </TableCell>
-                                            <TableCell className="text-[#020617] font-semibold text-right">
-                                                Rs. {product.lineTotal.toLocaleString()}
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </div>
+                                ))}
+                            </TableBody>
+                        </Table>
                     </div>
 
-                    {/* Section 3: Bill Summary */}
+                    {/* Bill Summary */}
                     <div>
-                        <h2 className="text-lg font-semibold text-[#020617] mb-4 pb-2 border-b">
+                        <h2 className="text-sm font-semibold text-[#020617] mb-4 pb-2 border-b border-gray-100">
                             Bill Summary
                         </h2>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                            <div>
-                                <p className="text-xs uppercase tracking-wide text-[#64748b] mb-1">
-                                    Subtotal
-                                </p>
-                                <p className="text-base font-semibold text-[#020617]">
-                                    Rs. {data.subtotal.toLocaleString()}
-                                </p>
+                        <div className="space-y-2 max-w-md">
+                            <div className="flex justify-between text-sm">
+                                <span className="text-[#64748b]">Subtotal:</span>
+                                <span className="font-medium">₨ {sale.subtotal.toLocaleString()}</span>
                             </div>
-                            <div>
-                                <p className="text-xs uppercase tracking-wide text-[#64748b] mb-1">
-                                    Tax
-                                </p>
-                                <p className="text-base font-semibold text-[#020617]">
-                                    Rs. {data.tax.toLocaleString()}
-                                </p>
+                            <div className="flex justify-between text-sm">
+                                <span className="text-[#64748b]">Tax:</span>
+                                <span className="font-medium">₨ {sale.tax.toLocaleString()}</span>
                             </div>
-                            <div>
-                                <p className="text-xs uppercase tracking-wide text-[#64748b] mb-1">
-                                    Grand Total
-                                </p>
-                                <p className="text-xl font-bold text-[#14b8a6]">
-                                    Rs. {data.grandTotal.toLocaleString()}
-                                </p>
+                            <div className="flex justify-between text-lg font-bold pt-2 border-t">
+                                <span>Grand Total:</span>
+                                <span className="text-[#14b8a6]">₨ {sale.grandTotal.toLocaleString()}</span>
                             </div>
-                            <div>
-                                <p className="text-xs uppercase tracking-wide text-[#64748b] mb-1">
-                                    Paid Amount
-                                </p>
-                                <p className="text-base font-semibold text-[#020617]">
-                                    Rs. {data.paidAmount.toLocaleString()}
-                                </p>
+                            <div className="flex justify-between text-sm">
+                                <span className="text-[#64748b]">Amount Paid:</span>
+                                <span className="font-medium text-green-600">₨ {sale.amountPaid.toLocaleString()}</span>
+                            </div>
+                            <div className="flex justify-between text-sm font-bold">
+                                <span className={sale.grandTotal - sale.amountPaid > 0 ? "text-red-500" : "text-green-600"}>
+                                    Remaining:
+                                </span>
+                                <span className={sale.grandTotal - sale.amountPaid > 0 ? "text-red-500" : "text-green-600"}>
+                                    ₨ {(sale.grandTotal - sale.amountPaid).toLocaleString()}
+                                </span>
                             </div>
                         </div>
                     </div>
 
-                    {/* Section 4: Notes */}
-                    <div>
-                        <h2 className="text-lg font-semibold text-[#020617] mb-4 pb-2 border-b">
-                            Sale Notes
-                        </h2>
-                        <p className="text-base text-[#020617]">
-                            {data.notes || "—"}
-                        </p>
-                    </div>
-
-                    {/* Logs Section */}
-                    <div>
-                        <h2 className="text-lg font-semibold text-[#020617] mb-4 pb-2 border-b">
-                            Payment History
-                        </h2>
-                        <div className="space-y-4">
-                            {data.logs?.map((log, index) => (
-                                <div key={index} className="flex gap-4 relative">
-                                    {/* Timeline line */}
-                                    {index !== (data.logs?.length || 0) - 1 && (
-                                        <div className="absolute left-[19px] top-8 bottom-[-16px] w-[2px] bg-gray-100" />
-                                    )}
-
-                                    <div className="h-10 w-10 shrink-0 rounded-full bg-blue-50 flex items-center justify-center border border-blue-100">
-                                        <div className="h-2.5 w-2.5 rounded-full bg-blue-600" />
-                                    </div>
-                                    <div className="pt-2 w-full">
-                                        <div className="flex justify-between items-start">
-                                            <div>
-                                                <p className="font-medium text-[#020617]">{log.action}</p>
-                                                <p className="text-xs text-[#64748b] mt-0.5">by {log.performedBy}</p>
-                                            </div>
-                                            <div className="text-right">
-                                                <p className="font-semibold text-[#14b8a6]">
-                                                    + ₨ {log.amount.toLocaleString()}
-                                                </p>
-                                                <p className="text-xs text-[#64748b] mt-0.5">{log.date}</p>
+                    {/* Payment Logs */}
+                    {sale.paymentHistory && sale.paymentHistory.length > 0 && (
+                        <div>
+                            <h2 className="text-sm font-semibold text-[#020617] mb-4 pb-2 border-b border-gray-100">
+                                Payment Logs
+                            </h2>
+                            <div className="space-y-4">
+                                {sale.paymentHistory.map((log, index) => (
+                                    <div key={index} className="flex gap-4 relative">
+                                        {index !== sale.paymentHistory!.length - 1 && (
+                                            <div className="absolute left-[19px] top-8 bottom-[-16px] w-[2px] bg-gray-100" />
+                                        )}
+                                        <div className="h-10 w-10 shrink-0 rounded-full bg-blue-50 flex items-center justify-center border border-blue-100">
+                                            <div className="h-2.5 w-2.5 rounded-full bg-blue-600" />
+                                        </div>
+                                        <div className="pt-2 w-full">
+                                            <div className="flex justify-between items-start">
+                                                <div>
+                                                    <p className="font-medium text-[#020617]">{log.action}</p>
+                                                    <p className="text-xs text-[#64748b] mt-0.5">by {log.performedBy}</p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="font-semibold text-[#14b8a6]">
+                                                        + ₨ {log.amount.toLocaleString()}
+                                                    </p>
+                                                    <p className="text-xs text-[#64748b] mt-0.5">
+                                                        {new Date(log.timestamp).toLocaleString()}
+                                                    </p>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-                            ))}
-                            {!data.logs?.length && (
-                                <p className="text-sm text-[#64748b] italic">No payment history available.</p>
-                            )}
-
-                            <div className="mt-4 pt-4 border-t border-gray-100 flex justify-between items-center bg-gray-50 p-4 rounded-lg">
-                                <div>
-                                    <p className="text-xs text-[#64748b] uppercase font-semibold">Remaining Balance</p>
-                                </div>
-                                <div className="text-right">
-                                    <p className={`text-xl font-bold ${(data.grandTotal - (data.paidAmount || 0)) > 0 ? "text-red-500" : "text-green-600"
-                                        }`}>
-                                        ₨ {(data.grandTotal - (data.paidAmount || 0)).toLocaleString()}
-                                    </p>
-                                </div>
+                                ))}
                             </div>
                         </div>
-                    </div>
+                    )}
                 </Card>
             </div>
         </div>
     );
-};
-
-export default SaleView;
+}

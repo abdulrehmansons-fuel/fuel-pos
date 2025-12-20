@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { CheckCircle, Download, Printer, ArrowLeft } from "lucide-react";
+import { getPumpDetails } from "@/app/actions/getPumpDetails";
 
 interface SaleItem {
     id: string;
@@ -35,6 +36,9 @@ export default function CheckoutPage() {
     const pumpId = params?.pump as string;
     const employerId = params?.id as string;
 
+    const [pumpDetails, setPumpDetails] = useState<{ _id: string; pumpName: string; location?: string } | null>(null);
+    const [completedSaleData, setCompletedSaleData] = useState<any>(null); // Store backend response
+
     // Get sale data from localStorage
     const [saleItems, setSaleItems] = useState<SaleItem[]>([]);
     const [totalAmount, setTotalAmount] = useState(0);
@@ -51,12 +55,28 @@ export default function CheckoutPage() {
         }
     }, [searchParams]);
 
+    // Fetch Pump ID on mount
+    useEffect(() => {
+        const fetchPump = async () => {
+            if (pumpId) {
+                const details = await getPumpDetails(pumpId);
+                if (details) {
+                    setPumpDetails(details);
+                } else {
+                    console.error("Pump not found");
+                }
+            }
+        };
+        fetchPump();
+    }, [pumpId]);
+
     const [customerName, setCustomerName] = useState("");
     const [customerPhone, setCustomerPhone] = useState("");
     const [paymentMethod, setPaymentMethod] = useState("Cash");
     const [amountPaid, setAmountPaid] = useState(totalAmount.toString());
     const [notes, setNotes] = useState("");
     const [saleCompleted, setSaleCompleted] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Update amountPaid when totalAmount changes
     useEffect(() => {
@@ -76,24 +96,68 @@ export default function CheckoutPage() {
         return `${quantity} pcs`;
     };
 
-    const handleCompleteSale = () => {
-        // In real app, save to database
-        console.log({
-            customerName,
-            customerPhone,
-            paymentMethod,
-            saleItems,
-            totalAmount,
-            amountPaid: amountPaidNum,
-            balance,
-            paymentStatus,
-            notes,
-        });
+    // Helper to validate phone number
+    const isValidPhone = (phone: string) => {
+        const phoneRegex = /^03\d{9}$/; // Starts with 03, followed by 9 digits (total 11)
+        return phoneRegex.test(phone);
+    };
 
-        // Clear localStorage
-        localStorage.removeItem('pendingSale');
+    const handleCompleteSale = async () => {
+        if (!customerName || !customerPhone) {
+            alert("Customer Name and Phone Number are required.");
+            return;
+        }
 
-        setSaleCompleted(true);
+        if (!isValidPhone(customerPhone)) {
+            alert("Invalid Phone Number. Must start with '03' and be 11 digits long (e.g., 03222222222).");
+            return;
+        }
+
+        if (!pumpDetails?._id) {
+            alert("Pump details not loaded. Please wait or refresh.");
+            return;
+        }
+
+        setIsSubmitting(true);
+        try {
+            const change = balance < 0 ? Math.abs(balance) : 0;
+
+            const payload = {
+                employerId,
+                pumpId: pumpDetails._id, // Use resolved ObjectId
+                items: saleItems,
+                subtotal: totalAmount, // Assuming no tax/add-ons for simplified flow
+                tax: 0,
+                grandTotal: totalAmount,
+                amountPaid: amountPaidNum,
+                changeReturned: change,
+                paymentMethod,
+                notes: notes + (customerName ? `\nCustomer: ${customerName}` : "") + (customerPhone ? `\nPhone: ${customerPhone}` : ""),
+            };
+
+            const response = await fetch("/api/sales", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || "Failed to complete sale");
+            }
+
+            const newSale = await response.json();
+            setCompletedSaleData(newSale);
+
+            // Clear localStorage
+            localStorage.removeItem('pendingSale');
+            setSaleCompleted(true);
+        } catch (error: any) {
+            console.error("Sale Error:", error);
+            alert(error.message || "An error occurred while processing the sale.");
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     const handleDownloadReceipt = () => {
@@ -172,13 +236,22 @@ export default function CheckoutPage() {
                             <div className="header">
                                 <h2 className="text-2xl font-bold">FUEL POS</h2>
                                 <p className="text-sm text-gray-600">Sale Receipt</p>
-                                <p className="text-xs text-gray-500">Date: {new Date().toLocaleString()}</p>
+                                <p className="text-sm font-semibold mt-1">{pumpDetails?.pumpName || "Unknown Pump"}</p>
+                                {pumpDetails?.location && <p className="text-xs text-gray-500">{pumpDetails.location}</p>}
+                                <p className="text-xs text-gray-500 mt-1">
+                                    Date: {completedSaleData ? new Date(completedSaleData.createdAt).toLocaleString() : new Date().toLocaleString()}
+                                </p>
                             </div>
 
                             <div className="space-y-2">
                                 <div className="row">
                                     <span className="label">Receipt #:</span>
-                                    <span>SALE-{Date.now()}</span>
+                                    <span>
+                                        {completedSaleData
+                                            ? `SALE-${completedSaleData._id.slice(-6).toUpperCase()}`
+                                            : `PENDING`
+                                        }
+                                    </span>
                                 </div>
                                 {customerName && (
                                     <div className="row">
@@ -355,7 +428,7 @@ export default function CheckoutPage() {
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                    <Label htmlFor="customerName">Customer Name (Optional)</Label>
+                                    <Label htmlFor="customerName">Customer Name <span className="text-red-500">*</span></Label>
                                     <Input
                                         id="customerName"
                                         value={customerName}
@@ -366,14 +439,23 @@ export default function CheckoutPage() {
                                 </div>
 
                                 <div>
-                                    <Label htmlFor="customerPhone">Phone Number (Optional)</Label>
+                                    <Label htmlFor="customerPhone">Phone Number <span className="text-red-500">*</span></Label>
                                     <Input
                                         id="customerPhone"
                                         value={customerPhone}
-                                        onChange={(e) => setCustomerPhone(e.target.value)}
-                                        placeholder="Enter phone number"
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            // Only allow digits to be typed
+                                            if (/^\d*$/.test(val) && val.length <= 11) {
+                                                setCustomerPhone(val);
+                                            }
+                                        }}
+                                        placeholder="03xxxxxxxxx"
                                         className="mt-1"
                                     />
+                                    {customerPhone && !isValidPhone(customerPhone) && (
+                                        <p className="text-xs text-red-500 mt-1">Must start with 03 and be 11 digits.</p>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -414,8 +496,8 @@ export default function CheckoutPage() {
 
                             {/* Balance Display */}
                             <div className={`p-4 rounded-lg ${balance > 0 ? 'bg-red-50 border border-red-200' :
-                                    balance < 0 ? 'bg-yellow-50 border border-yellow-200' :
-                                        'bg-green-50 border border-green-200'
+                                balance < 0 ? 'bg-yellow-50 border border-yellow-200' :
+                                    'bg-green-50 border border-green-200'
                                 }`}>
                                 <div className="flex justify-between items-center">
                                     <span className="font-medium">
@@ -450,10 +532,10 @@ export default function CheckoutPage() {
                         {/* Submit Button */}
                         <Button
                             onClick={handleCompleteSale}
-                            disabled={saleItems.length === 0}
+                            disabled={saleItems.length === 0 || isSubmitting || !customerName || !customerPhone || !isValidPhone(customerPhone)}
                             className="w-full bg-[#14b8a6] hover:bg-[#0d9488] text-white h-12 text-lg disabled:opacity-50"
                         >
-                            Complete Sale & Generate Receipt
+                            {isSubmitting ? "Processing Sale..." : "Complete Sale & Generate Receipt"}
                         </Button>
                     </Card>
                 </div>

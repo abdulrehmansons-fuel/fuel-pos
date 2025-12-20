@@ -6,99 +6,94 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, Calculator } from "lucide-react";
 import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Spinner } from "@/components/ui/spinner";
 
-// Define types
 interface SaleItem {
-    id: string;
-    name: string;
-    category?: string;
+    productName: string;
+    category: string;
     quantity: number;
+    unit: string;
     rate: number;
     total: number;
-    productName?: string;
 }
 
 interface Sale {
-    id: string;
-    customerName: string;
+    _id: string;
+    employerId: any;
+    pumpId: any;
     items: SaleItem[];
-    totalAmount: number;
-    paidAmount: number;
-    status: string;
+    subtotal: number;
+    tax: number;
+    grandTotal: number;
+    amountPaid: number;
+    changeReturned: number;
+    paymentStatus: string;
+    paymentMethod: string;
+    notes?: string;
+    status: "Pending" | "Approved" | "Rejected";
+    createdAt: string;
 }
-
-// Mock database - synced with mainPage.tsx
-const mockDatabase: Sale[] = [
-    {
-        id: "SALE-1718123456789",
-        customerName: "Walk-in Customer",
-        items: [
-            { id: "1", name: "Regular Petrol", category: "Petrol", quantity: 15, rate: 290, total: 4350 },
-            { id: "2", name: "Premium Diesel", category: "Diesel", quantity: 10, rate: 320, total: 3200 },
-            { id: "3", name: "Mobil 1 5W-30", category: "Engine Oil", quantity: 2, rate: 2500, total: 5000 },
-        ],
-        totalAmount: 12550,
-        paidAmount: 12550, // Fully paid
-        status: "Approved",
-    },
-    {
-        id: "SALE-1718123456790",
-        customerName: "Walk-in Customer",
-        items: [
-            { id: "1", name: "Diesel", category: "Diesel", quantity: 20, rate: 320, total: 6400 },
-        ],
-        totalAmount: 6400,
-        paidAmount: 3000, // Partial payment (Remaining 3400)
-        status: "Pending",
-    },
-    {
-        id: "SALE-1718123456791",
-        customerName: "Walk-in Customer",
-        items: [
-            { id: "1", name: "High-Octane Petrol", category: "Petrol", quantity: 25, rate: 350, total: 8750 },
-        ],
-        totalAmount: 8750,
-        paidAmount: 8750, // Rejected but full amount shown in original logic? Assuming fully paid or just status rejected
-        status: "Rejected",
-    },
-];
 
 export default function EmployerEditSale() {
     const router = useRouter();
     const params = useParams();
-    // const pumpId = params?.pump as string; // unused
-    // const employerId = params?.id as string; // unused
+    const pumpId = params?.pump as string;
+    const employerId = params?.id as string;
     const saleId = params?.saleId as string;
 
     const [sale, setSale] = useState<Sale | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [submitting, setSubmitting] = useState(false);
     const [newPayment, setNewPayment] = useState<number>(0);
-    const [loading, setLoading] = useState(false);
+    const [paymentNotes, setPaymentNotes] = useState("");
 
     useEffect(() => {
-        if (saleId) {
-            // Simulate fetch
-            const foundSale = mockDatabase.find(s => s.id === saleId);
-            if (foundSale) {
-                setSale(foundSale);
-            } else {
-                // Fallback
-                setSale(mockDatabase.find(s => s.id === "SALE-1718123456790") || mockDatabase[0]);
-                if (!foundSale && saleId !== "new") {
-                    toast.error("Sale not found, showing demo data");
-                }
+        const fetchSale = async () => {
+            try {
+                setLoading(true);
+                const response = await fetch(`/api/sales/${saleId}`);
+                if (!response.ok) throw new Error("Failed to fetch sale");
+                const data = await response.json();
+                setSale(data);
+            } catch (error) {
+                console.error("Error fetching sale:", error);
+                toast.error("Failed to load sale details");
+            } finally {
+                setLoading(false);
             }
+        };
+
+        if (saleId) {
+            fetchSale();
         }
     }, [saleId]);
 
-    if (!sale) return <div className="p-6">Loading...</div>;
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-[#f1f5f9] flex items-center justify-center">
+                <div className="flex flex-col items-center">
+                    <Spinner className="h-12 w-12 text-[#14b8a6] mb-4" />
+                    <p className="text-[#64748b]">Loading sale details...</p>
+                </div>
+            </div>
+        );
+    }
 
-    // Calculate remaining
-    const remainingAmount = sale.totalAmount - sale.paidAmount;
+    if (!sale) {
+        return (
+            <div className="min-h-screen bg-[#f1f5f9] flex items-center justify-center">
+                <p className="text-[#64748b]">Sale not found</p>
+            </div>
+        );
+    }
 
-    const handleUpdatePayment = () => {
+    const remainingAmount = sale.grandTotal - sale.amountPaid;
+
+    const handleUpdatePayment = async () => {
         if (newPayment <= 0) {
             toast.error("Please enter a valid amount");
             return;
@@ -109,19 +104,36 @@ export default function EmployerEditSale() {
             return;
         }
 
-        setLoading(true);
-        // Simulate API call
-        setTimeout(() => {
-            const updatedPaid = sale.paidAmount + newPayment;
-            setSale({
-                ...sale,
-                paidAmount: updatedPaid,
-                status: updatedPaid >= sale.totalAmount ? "Approved" : "Pending"
+        setSubmitting(true);
+        try {
+            const updatedAmountPaid = sale.amountPaid + newPayment;
+
+            const response = await fetch(`/api/sales/${saleId}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    amountPaid: updatedAmountPaid,
+                    notes: paymentNotes || `Additional payment of ₨${newPayment}`,
+                    performedBy: `Employer: ${sale.employerId?.fullName || "Muhammad Sarim"}`,
+                }),
             });
+
+            if (!response.ok) throw new Error("Failed to update payment");
+
+            const updatedSale = await response.json();
+            setSale(updatedSale);
             setNewPayment(0);
-            setLoading(false);
+            setPaymentNotes("");
             toast.success("Payment updated successfully");
-        }, 1000);
+
+            // Optionally redirect back
+            // router.push(`/employer/${pumpId}/${employerId}/sales/${saleId}/view`);
+        } catch (error) {
+            console.error("Error updating payment:", error);
+            toast.error("Failed to update payment");
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     return (
@@ -132,7 +144,7 @@ export default function EmployerEditSale() {
                     <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => router.back()}
+                        onClick={() => router.push(`/employer/${pumpId}/${employerId}/sales/${saleId}/view`)}
                         className="flex items-center gap-2"
                     >
                         <ArrowLeft size={16} />
@@ -140,7 +152,7 @@ export default function EmployerEditSale() {
                     </Button>
                     <div>
                         <h1 className="text-2xl font-bold text-[#020617]">Edit Sale Payment</h1>
-                        <p className="text-sm text-[#64748b]">Update payment details for #{sale.id}</p>
+                        <p className="text-sm text-[#64748b]">Update payment details for SALE-{sale._id.slice(-6).toUpperCase()}</p>
                     </div>
                 </div>
 
@@ -158,18 +170,20 @@ export default function EmployerEditSale() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {sale.items.map((item: SaleItem) => (
-                                        <TableRow key={item.id || item.productName}>
+                                    {sale.items.map((item, index) => (
+                                        <TableRow key={index}>
                                             <TableCell>
-                                                <div className="font-medium">{item.name || item.productName}</div>
-                                                <div className="text-xs text-gray-500">{item.quantity} x {item.rate}</div>
+                                                <div className="font-medium">{item.productName}</div>
+                                                <div className="text-xs text-gray-500">
+                                                    {item.quantity} {item.unit} x ₨{item.rate}
+                                                </div>
                                             </TableCell>
                                             <TableCell className="text-right">₨ {item.total.toLocaleString()}</TableCell>
                                         </TableRow>
                                     ))}
                                     <TableRow className="font-bold border-t-2">
                                         <TableCell>Total Amount</TableCell>
-                                        <TableCell className="text-right text-[#020617]">₨ {sale.totalAmount.toLocaleString()}</TableCell>
+                                        <TableCell className="text-right text-[#020617]">₨ {sale.grandTotal.toLocaleString()}</TableCell>
                                     </TableRow>
                                 </TableBody>
                             </Table>
@@ -187,11 +201,11 @@ export default function EmployerEditSale() {
                             <div className="space-y-3">
                                 <div className="flex justify-between text-sm">
                                     <span className="text-[#64748b]">Total Amount</span>
-                                    <span className="font-medium">₨ {sale.totalAmount.toLocaleString()}</span>
+                                    <span className="font-medium">₨ {sale.grandTotal.toLocaleString()}</span>
                                 </div>
                                 <div className="flex justify-between text-sm">
                                     <span className="text-[#64748b]">Already Paid</span>
-                                    <span className="font-medium text-green-600">₨ {sale.paidAmount.toLocaleString()}</span>
+                                    <span className="font-medium text-green-600">₨ {sale.amountPaid.toLocaleString()}</span>
                                 </div>
                                 <div className="flex justify-between text-lg font-bold pt-2 border-t">
                                     <span className={remainingAmount > 0 ? "text-red-500" : "text-green-600"}>
@@ -203,7 +217,7 @@ export default function EmployerEditSale() {
                                 </div>
                             </div>
 
-                            {remainingAmount > 0 && (
+                            {remainingAmount > 0 ? (
                                 <div className="pt-4 border-t space-y-4">
                                     <div className="space-y-2">
                                         <Label htmlFor="addPayment">Add Payment</Label>
@@ -215,21 +229,29 @@ export default function EmployerEditSale() {
                                             onChange={(e) => setNewPayment(Number(e.target.value))}
                                             max={remainingAmount}
                                         />
-                                        <p className="text-xs text-gray-500">Max addable: ₨ {remainingAmount}</p>
+                                        <p className="text-xs text-gray-500">Max addable: ₨ {remainingAmount.toLocaleString()}</p>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="paymentNotes">Notes (Optional)</Label>
+                                        <Textarea
+                                            id="paymentNotes"
+                                            placeholder="Payment notes..."
+                                            value={paymentNotes}
+                                            onChange={(e) => setPaymentNotes(e.target.value)}
+                                            rows={2}
+                                        />
                                     </div>
                                     <Button
                                         onClick={handleUpdatePayment}
                                         className="w-full bg-[#14b8a6] hover:bg-[#0d9488]"
-                                        disabled={loading || newPayment <= 0 || newPayment > remainingAmount}
+                                        disabled={submitting || newPayment <= 0 || newPayment > remainingAmount}
                                     >
-                                        {loading ? "Updating..." : "Update Payment"}
+                                        {submitting ? "Updating..." : "Update Payment"}
                                     </Button>
                                 </div>
-                            )}
-
-                            {remainingAmount === 0 && (
+                            ) : (
                                 <div className="p-3 bg-green-50 text-green-700 rounded-md text-sm text-center font-medium">
-                                    This sale is fully paid.
+                                    ✓ This sale is fully paid.
                                 </div>
                             )}
                         </Card>

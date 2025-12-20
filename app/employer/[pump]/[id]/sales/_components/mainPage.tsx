@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -13,46 +13,22 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { Spinner } from "@/components/ui/spinner";
 
 interface Sale {
-    id: string;
-    products: string;
-    amount: number;
-    paidAmount: number;
+    _id: string;
+    items: Array<{
+        productName: string;
+        quantity: number;
+        unit: string;
+    }>;
+    grandTotal: number;
+    amountPaid: number;
     paymentMethod: string;
+    paymentStatus: "Paid" | "Partial" | "Overpaid";
     status: "Pending" | "Approved" | "Rejected";
     createdAt: string;
 }
-
-const mockSales: Sale[] = [
-    {
-        id: "SALE-1718123456789",
-        products: "Regular Petrol (15L), Premium Diesel (10L), Mobil 1 5W-30 (2L)",
-        amount: 12550,
-        paidAmount: 12550,
-        paymentMethod: "Cash",
-        status: "Approved",
-        createdAt: "Dec 10, 2024 — 02:45 PM",
-    },
-    {
-        id: "SALE-1718123456790",
-        products: "Diesel (20L)",
-        amount: 6400,
-        paidAmount: 3000,
-        paymentMethod: "Card",
-        status: "Pending",
-        createdAt: "Dec 10, 2024 — 03:15 PM",
-    },
-    {
-        id: "SALE-1718123456791",
-        products: "High-Octane Petrol (25L)",
-        amount: 8750,
-        paidAmount: 8750,
-        paymentMethod: "Cash",
-        status: "Rejected",
-        createdAt: "Dec 09, 2024 — 11:30 AM",
-    },
-];
 
 const getStatusBadge = (status: "Pending" | "Approved" | "Rejected") => {
     const styles = {
@@ -73,14 +49,36 @@ export default function EmployerSalesList() {
     const pumpId = params?.pump as string;
     const employerId = params?.id as string;
 
-    const [sales] = useState<Sale[]>(mockSales);
+    const [sales, setSales] = useState<Sale[]>([]);
+    const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
     const [statusFilter, setStatusFilter] = useState("all");
 
+    useEffect(() => {
+        const fetchSales = async () => {
+            try {
+                setLoading(true);
+                const response = await fetch(`/api/sales?employerId=${employerId}`);
+                if (!response.ok) throw new Error("Failed to fetch sales");
+                const data = await response.json();
+                setSales(data);
+            } catch (error) {
+                console.error("Error fetching sales:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        if (employerId) {
+            fetchSales();
+        }
+    }, [employerId]);
+
     const filteredSales = sales.filter((sale) => {
+        const products = sale.items.map((item) => item.productName).join(", ");
         const matchesSearch =
-            sale.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            sale.products.toLowerCase().includes(searchQuery.toLowerCase());
+            sale._id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            products.toLowerCase().includes(searchQuery.toLowerCase());
         const matchesStatus = statusFilter === "all" || sale.status.toLowerCase() === statusFilter;
         return matchesSearch && matchesStatus;
     });
@@ -156,6 +154,7 @@ export default function EmployerSalesList() {
                             <TableRow>
                                 <TableHead className="font-semibold text-[#020617]">Sale ID</TableHead>
                                 <TableHead className="font-semibold text-[#020617]">Products</TableHead>
+                                <TableHead className="font-semibold text-[#020617] text-center">Quantity (L)</TableHead>
                                 <TableHead className="font-semibold text-[#020617]">Amount (₨)</TableHead>
                                 <TableHead className="font-semibold text-[#020617]">Remaining (₨)</TableHead>
                                 <TableHead className="font-semibold text-[#020617]">Payment</TableHead>
@@ -165,35 +164,66 @@ export default function EmployerSalesList() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {filteredSales.map((sale) => (
-                                <TableRow key={sale.id} className="hover:bg-gray-100">
-                                    <TableCell className="font-medium text-[#020617]">{sale.id}</TableCell>
-                                    <TableCell className="text-[#020617] max-w-[250px] truncate">
-                                        {sale.products}
-                                    </TableCell>
-                                    <TableCell className="text-[#020617] font-medium">
-                                        ₨ {sale.amount.toLocaleString()}
-                                    </TableCell>
-                                    <TableCell className={`font-medium ${sale.amount - sale.paidAmount > 0 ? "text-red-500" : "text-green-600"}`}>
-                                        ₨ {(sale.amount - sale.paidAmount).toLocaleString()}
-                                    </TableCell>
-                                    <TableCell className="text-[#020617]">{sale.paymentMethod}</TableCell>
-                                    <TableCell>{getStatusBadge(sale.status)}</TableCell>
-                                    <TableCell className="text-[#64748b] text-sm">{sale.createdAt}</TableCell>
-                                    <TableCell>
-                                        <div className="flex items-center justify-end gap-2">
-                                            <Button
-                                                size="sm"
-                                                variant="outline"
-                                                onClick={() => router.push(`/employer/${pumpId}/${employerId}/sales/${sale.id}/view`)}
-                                                className="h-8 px-3"
-                                            >
-                                                <Eye className="h-4 w-4" />
-                                            </Button>
+                            {loading ? (
+                                <TableRow>
+                                    <TableCell colSpan={9} className="text-center py-12">
+                                        <div className="flex flex-col items-center justify-center">
+                                            <Spinner className="h-8 w-8 text-[#14b8a6] mb-2" />
+                                            <p className="text-[#64748b]">Loading sales...</p>
                                         </div>
                                     </TableCell>
                                 </TableRow>
-                            ))}
+                            ) : filteredSales.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={9} className="text-center py-12">
+                                        <p className="text-[#64748b]">No sales found</p>
+                                    </TableCell>
+                                </TableRow>
+                            ) : (
+                                filteredSales.map((sale) => {
+                                    const totalLiters = sale.items.reduce((sum: number, item: any) => {
+                                        const liters = item.unit === "L" ? item.quantity : item.unit === "mL" ? item.quantity / 1000 : 0;
+                                        return sum + liters;
+                                    }, 0);
+
+                                    return (
+                                        <TableRow key={sale._id} className="hover:bg-gray-100">
+                                            <TableCell className="font-medium text-[#020617]">
+                                                SALE-{sale._id.slice(-6).toUpperCase()}
+                                            </TableCell>
+                                            <TableCell className="text-[#020617] max-w-[200px]">
+                                                {sale.items.map((item: any) => item.productName).join(", ")}
+                                            </TableCell>
+                                            <TableCell className="text-center font-medium text-[#020617]">
+                                                {totalLiters.toFixed(2)} L
+                                            </TableCell>
+                                            <TableCell className="text-[#020617] font-medium">
+                                                ₨ {sale.grandTotal.toLocaleString()}
+                                            </TableCell>
+                                            <TableCell className={`font-medium ${sale.grandTotal - sale.amountPaid > 0 ? "text-red-500" : "text-green-600"}`}>
+                                                ₨ {(sale.grandTotal - sale.amountPaid).toLocaleString()}
+                                            </TableCell>
+                                            <TableCell className="text-[#020617]">{sale.paymentMethod}</TableCell>
+                                            <TableCell>{getStatusBadge(sale.status)}</TableCell>
+                                            <TableCell className="text-[#64748b] text-sm">
+                                                {new Date(sale.createdAt).toLocaleString()}
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="flex items-center justify-end gap-2">
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        onClick={() => router.push(`/employer/${pumpId}/${employerId}/sales/${sale._id}/view`)}
+                                                        className="h-8 px-3"
+                                                    >
+                                                        <Eye className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    );
+                                })
+                            )}
                         </TableBody>
                     </Table>
                 </Card>

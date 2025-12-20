@@ -22,6 +22,7 @@ type EmployerData = {
   employerId: string; // Database ID
   displayId?: string; // Custom ID (EMP-XXX)
   fullName: string;
+  username?: string;
   email: string;
   mobile: string;
   address: string;
@@ -51,6 +52,7 @@ const EmployerView = ({ employerId }: { employerId: string }) => {
           employerId: data._id,
           displayId: data.employerId, // Use custom ID if available
           fullName: data.fullName,
+          username: data.username,
           email: data.email,
           mobile: data.mobile,
           address: data.address || "",
@@ -178,6 +180,15 @@ const EmployerView = ({ employerId }: { employerId: string }) => {
               </span>
               <span className="text-base text-[#020617] font-semibold">
                 {employer.fullName}
+              </span>
+            </div>
+
+            <div className="flex flex-col">
+              <span className="text-xs uppercase text-[#64748b] font-medium mb-1">
+                Username
+              </span>
+              <span className="text-base text-[#020617] font-semibold">
+                {employer.username || "—"}
               </span>
             </div>
 
