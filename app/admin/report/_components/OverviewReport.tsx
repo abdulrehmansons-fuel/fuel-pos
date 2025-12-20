@@ -6,7 +6,7 @@ import { DollarSign, ShoppingCart, TrendingUp, TrendingDown, Package, Users, Fue
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { format } from "date-fns";
 
-import { SalesItem } from "./types";
+import { SalesItem, ExpenseItem } from "./types";
 
 interface OverviewReportProps {
   metrics: {
@@ -20,27 +20,39 @@ interface OverviewReportProps {
     activePumps: number;
   };
   salesData: SalesItem[];
+  expensesData: ExpenseItem[];
 }
 
-export function OverviewReport({ metrics, salesData }: OverviewReportProps) {
+export function OverviewReport({ metrics, salesData, expensesData }: OverviewReportProps) {
   // Prepare chart data
   const prepareChartData = () => {
     const groupedByDate: Record<string, { revenue: number; expenses: number }> = {};
 
+    // Group Sales
     salesData.forEach((sale) => {
       const date = format(new Date(sale.date), "MMM dd");
       if (!groupedByDate[date]) {
         groupedByDate[date] = { revenue: 0, expenses: 0 };
       }
       groupedByDate[date].revenue += sale.totalPrice;
-      groupedByDate[date].expenses += Math.floor(sale.totalPrice * 0.6); // Mock expense calculation
     });
 
-    return Object.entries(groupedByDate).map(([month, data]) => ({
-      month,
-      revenue: data.revenue,
-      expenses: data.expenses,
-    }));
+    // Group Expenses
+    expensesData.forEach((expense) => {
+      const date = format(new Date(expense.date), "MMM dd");
+      if (!groupedByDate[date]) {
+        groupedByDate[date] = { revenue: 0, expenses: 0 };
+      }
+      groupedByDate[date].expenses += expense.amount;
+    });
+
+    return Object.entries(groupedByDate)
+      .sort((a, b) => new Date(a[0]).getTime() - new Date(b[0]).getTime()) // Attempt to sort by date
+      .map(([month, data]) => ({
+        month,
+        revenue: data.revenue,
+        expenses: data.expenses,
+      }));
   };
 
   const revenueVsExpenses = prepareChartData();

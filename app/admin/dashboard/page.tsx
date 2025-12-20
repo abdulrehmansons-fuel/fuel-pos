@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,7 +21,8 @@ import {
   Package,
   Activity,
   CreditCard,
-  Wallet
+  Wallet,
+  Calendar
 } from "lucide-react";
 import {
   XAxis,
@@ -34,43 +36,179 @@ import {
   AreaChart,
   Area,
 } from "recharts";
-
-// Mock Data - Simulating aggregated data from modules
-const financialData = [
-  { name: "Jan", revenue: 45000, expenses: 32000 },
-  { name: "Feb", revenue: 52000, expenses: 35000 },
-  { name: "Mar", revenue: 48000, expenses: 30000 },
-  { name: "Apr", revenue: 61000, expenses: 40000 },
-  { name: "May", revenue: 55000, expenses: 38000 },
-  { name: "Jun", revenue: 67000, expenses: 42000 },
-  { name: "Jul", revenue: 72000, expenses: 45000 },
-];
-
-const fuelSalesData = [
-  { name: "Petrol", value: 45, color: "#14b8a6" }, // Teal
-  { name: "Diesel", value: 35, color: "#3b82f6" }, // Blue
-  { name: "High-Octane", value: 15, color: "#8b5cf6" }, // Purple
-  { name: "Lubricants", value: 5, color: "#f59e0b" }, // Amber
-];
-
-const recentSales = [
-  { id: "SL005", product: "Engine Oil (2L)", amount: 1800, status: "approved", time: "2:00 PM" },
-  { id: "SL004", product: "Petrol (20L), Diesel...", amount: 7500, status: "pending", time: "11:20 AM" },
-  { id: "SL002", product: "Diesel (25L)", amount: 5800, status: "approved", time: "10:15 AM" },
-  { id: "SL001", product: "Petrol (10L)", amount: 3500, status: "pending", time: "09:30 AM" },
-];
-
-const stockAlerts = [
-  { item: "High-Octane", current: 450, min: 1000, status: "critical" },
-  { item: "Engine Oil 1L", current: 12, min: 20, status: "low" },
-];
+import { toast } from "sonner";
+import { format, subMonths, isAfter, startOfMonth } from "date-fns";
 
 export default function Dashboard() {
-  // Calculations
-  const totalRevenue = 452300;
-  const totalExpenses = 125000;
-  const netProfit = totalRevenue - totalExpenses;
-  const profitMargin = ((netProfit / totalRevenue) * 100).toFixed(1);
+  const [isLoading, setIsLoading] = useState(true);
+  const [metrics, setMetrics] = useState({
+    totalRevenue: 0,
+    totalExpenses: 0,
+    netProfit: 0,
+    profitMargin: "0",
+    totalFuelSold: 0,
+    revGrowth: 0,
+    expGrowth: 0,
+    volGrowth: 0
+  });
+
+  const [charts, setCharts] = useState({
+    financialData: [] as any[],
+    fuelSalesData: [] as any[],
+    recentSales: [] as any[],
+    stockAlerts: [] as any[]
+  });
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        const [salesRes, expensesRes, stocksRes, pumpsRes] = await Promise.all([
+          fetch("/api/sales"),
+          fetch("/api/expenses"),
+          fetch("/api/stocks"),
+          fetch("/api/fuel-pumps")
+        ]);
+
+        const [sales, expenses, stocks, pumps] = await Promise.all([
+          salesRes.json(),
+          expensesRes.json(),
+          stocksRes.json(),
+          pumpsRes.json()
+        ]);
+
+        const salesArr = Array.isArray(sales) ? sales : [];
+        const expensesArr = Array.isArray(expenses) ? expenses : [];
+        const stocksArr = Array.isArray(stocks) ? stocks : [];
+
+        // 1. Basic Metrics
+        const totalRevenue = salesArr.reduce((sum: number, s: any) => sum + (s.grandTotal || 0), 0);
+        const totalExpenses = expensesArr.reduce((sum: number, e: any) => sum + (Number(e.amount) || 0), 0);
+        const netProfit = totalRevenue - totalExpenses;
+        const profitMargin = totalRevenue > 0 ? ((netProfit / totalRevenue) * 100).toFixed(1) : "0";
+
+        const totalFuelSold = salesArr.reduce((sum: number, s: any) => {
+          return sum + (s.items?.reduce((iSum: number, item: any) => iSum + (item.quantity || item.quantityInLiters || 0), 0) || 0);
+        }, 0);
+
+        // 2. Financial Overview Chart (Last 7 Months)
+        const last7Months = Array.from({ length: 7 }, (_, i) => {
+          const d = subMonths(new Date(), 6 - i);
+          return {
+            name: format(d, "MMM"),
+            fullDate: startOfMonth(d),
+            revenue: 0,
+            expenses: 0
+          };
+        });
+
+        salesArr.forEach((s: any) => {
+          const sDate = new Date(s.createdAt);
+          const monthIndex = last7Months.findIndex(m =>
+            m.fullDate.getMonth() === sDate.getMonth() && m.fullDate.getFullYear() === sDate.getFullYear()
+          );
+          if (monthIndex > -1) {
+            last7Months[monthIndex].revenue += (s.grandTotal || 0);
+          }
+        });
+
+        expensesArr.forEach((e: any) => {
+          const eDate = new Date(e.date || e.createdAt);
+          const monthIndex = last7Months.findIndex(m =>
+            m.fullDate.getMonth() === eDate.getMonth() && m.fullDate.getFullYear() === eDate.getFullYear()
+          );
+          if (monthIndex > -1) {
+            last7Months[monthIndex].expenses += (Number(e.amount) || 0);
+          }
+        });
+
+        // 3. Fuel Sales Distribution
+        const categoryMap: Record<string, { value: number; color: string }> = {
+          "Petrol": { value: 0, color: "#14b8a6" },
+          "Diesel": { value: 0, color: "#3b82f6" },
+          "High-Octane": { value: 0, color: "#8b5cf6" },
+          "Lubricants": { value: 0, color: "#f59e0b" }
+        };
+
+        salesArr.forEach((s: any) => {
+          s.items?.forEach((item: any) => {
+            const cat = item.category || "Other";
+            if (categoryMap[cat]) {
+              categoryMap[cat].value += (item.quantity || item.quantityInLiters || 0);
+            } else {
+              categoryMap[cat] = { value: (item.quantity || item.quantityInLiters || 0), color: "#94a3b8" };
+            }
+          });
+        });
+
+        const totalVol = Object.values(categoryMap).reduce((sum, c) => sum + c.value, 0);
+        const fuelSalesData = Object.entries(categoryMap)
+          .filter(([_, data]) => data.value > 0)
+          .map(([name, data]) => ({
+            name,
+            value: totalVol > 0 ? Math.round((data.value / totalVol) * 100) : 0,
+            color: data.color
+          }));
+
+        // 4. Recent Sales (Last 5)
+        const recentSales = salesArr.slice(0, 5).map((s: any) => ({
+          id: s.id || (s._id ? s._id.slice(-5).toUpperCase() : "N/A"),
+          product: s.items?.[0]?.productName || s.items?.[0]?.category || "Fuel",
+          amount: s.grandTotal || 0,
+          status: s.status?.toLowerCase() || "pending",
+          time: format(new Date(s.createdAt), "hh:mm a")
+        }));
+
+        // 5. Stock Alerts (Threshold < 100L)
+        const stockThreshold = 100;
+        const stockAlerts = stocksArr
+          .filter((st: any) => (Number(st.quantity) || 0) < stockThreshold)
+          .map((st: any) => ({
+            item: `${st.fuelType} (${st.pump || 'Main'})`,
+            current: Number(st.quantity) || 0,
+            min: stockThreshold,
+            status: Number(st.quantity) < 50 ? "critical" : "low"
+          }));
+
+        setMetrics({
+          totalRevenue,
+          totalExpenses,
+          netProfit,
+          profitMargin,
+          totalFuelSold,
+          revGrowth: 12.5, // Mock growth for now or calculate if needed
+          expGrowth: 4.2,
+          volGrowth: 8.1
+        });
+
+        setCharts({
+          financialData: last7Months,
+          fuelSalesData: fuelSalesData.length > 0 ? fuelSalesData : [{ name: "No Data", value: 100, color: "#e2e8f0" }],
+          recentSales,
+          stockAlerts
+        });
+
+      } catch (error) {
+        console.error("Dashboard Fetch Error:", error);
+        toast.error("Failed to load dashboard statistics");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  if (isLoading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-[#f1f5f9]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#14b8a6]"></div>
+      </div>
+    );
+  }
+
+  const { totalRevenue, totalExpenses, netProfit, profitMargin, totalFuelSold, revGrowth, expGrowth, volGrowth } = metrics;
+  const { financialData, fuelSalesData, recentSales, stockAlerts } = charts;
 
   return (
     <div className="min-h-screen bg-[#f1f5f9] p-6 space-y-6">
@@ -102,7 +240,7 @@ export default function Dashboard() {
             <div className="flex items-center mt-4 text-sm">
               <span className="text-green-600 flex items-center font-medium">
                 <ArrowUpRight className="h-4 w-4 mr-1" />
-                12.5%
+                {revGrowth}%
               </span>
               <span className="text-[#94a3b8] ml-2">from last month</span>
             </div>
@@ -126,7 +264,7 @@ export default function Dashboard() {
             <div className="flex items-center mt-4 text-sm">
               <span className="text-red-600 flex items-center font-medium">
                 <ArrowUpRight className="h-4 w-4 mr-1" />
-                4.2%
+                {expGrowth}%
               </span>
               <span className="text-[#94a3b8] ml-2">from last month</span>
             </div>
@@ -164,7 +302,7 @@ export default function Dashboard() {
               <div>
                 <p className="text-sm font-medium text-[#64748b]">Fuel Sold</p>
                 <h3 className="text-2xl font-bold text-[#020617] mt-2">
-                  24,500 L
+                  {totalFuelSold.toLocaleString()} L
                 </h3>
               </div>
               <div className="p-2 bg-amber-50 rounded-lg">
@@ -174,7 +312,7 @@ export default function Dashboard() {
             <div className="flex items-center mt-4 text-sm">
               <span className="text-green-600 flex items-center font-medium">
                 <ArrowUpRight className="h-4 w-4 mr-1" />
-                8.1%
+                {volGrowth}%
               </span>
               <span className="text-[#94a3b8] ml-2">volume increase</span>
             </div>

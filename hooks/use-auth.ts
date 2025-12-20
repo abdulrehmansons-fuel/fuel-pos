@@ -8,6 +8,7 @@ interface User {
     username: string;
     role: 'admin' | 'employee';
     fullName: string;
+    email: string;
 }
 
 type MeResponse = { user: User | null };

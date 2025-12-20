@@ -9,6 +9,8 @@ import "react-datepicker/dist/react-datepicker.css";
 import { CalendarIcon } from "lucide-react";
 
 
+import { toast } from "sonner";
+
 // Import report components
 import { OverviewReport } from "./OverviewReport";
 import { SalesReport } from "./SalesReport";
@@ -18,90 +20,111 @@ import { ExpenseReport } from "./ExpenseReport";
 import { StocksReport } from "./StocksReport";
 import { ReportData } from "./types";
 
-// Dummy data generators
-const generateDummyData = () => {
-    const pumps = ["Pump 1", "Pump 2", "Pump 3", "Pump 4"];
-    const fuelTypes = ["Petrol", "Diesel", "Premium"];
-    const expenseTypes = ["Maintenance", "Salaries", "Utilities", "Supplies", "Other"];
-
-    // Generate sales data
-    const salesData = Array.from({ length: 50 }, (_, i) => ({
-        orderId: `ORD-${1000 + i}`,
-        date: new Date(2025, 11, Math.floor(Math.random() * 10) + 1).toISOString(),
-        fuelType: fuelTypes[Math.floor(Math.random() * fuelTypes.length)],
-        quantity: Math.floor(Math.random() * 50) + 10,
-        totalPrice: Math.floor(Math.random() * 5000) + 1000,
-        pump: pumps[Math.floor(Math.random() * pumps.length)],
-        status: Math.random() > 0.1 ? "Completed" : "Refunded",
-        pumpId: `pump-${Math.floor(Math.random() * 4) + 1}`,
-    }));
-
-    // Generate employer data
-    const employerData = Array.from({ length: 20 }, (_, i) => ({
-        employerName: `Employee ${i + 1}`,
-        pump: pumps[Math.floor(Math.random() * pumps.length)],
-        role: ["Manager", "Operator", "Cashier", "Attendant"][Math.floor(Math.random() * 4)],
-        email: `employee${i + 1}@fuelpos.com`,
-        dateJoined: new Date(2024, Math.floor(Math.random() * 12), Math.floor(Math.random() * 28) + 1).toISOString(),
-        status: Math.random() > 0.2 ? "Active" : "Inactive",
-        pumpId: `pump-${Math.floor(Math.random() * 4) + 1}`,
-        salary: Math.floor(Math.random() * 30000) + 20000,
-    }));
-
-    // Generate pump data
-    const pumpData = pumps.map((pump, i) => ({
-        pumpId: `PUMP-${i + 1}`,
-        location: pump,
-        fuelType: fuelTypes[i % fuelTypes.length],
-        status: Math.random() > 0.2 ? "Active" : "Maintenance",
-        lastMaintenance: new Date(2025, 10, Math.floor(Math.random() * 30) + 1).toISOString(),
-        totalDispensed: Math.floor(Math.random() * 50000) + 10000,
-    }));
-
-    // Generate expense data
-    const expenseData = Array.from({ length: 40 }, (_, i) => ({
-        expenseId: `EXP-${2000 + i}`,
-        date: new Date(2025, 11, Math.floor(Math.random() * 10) + 1).toISOString(),
-        category: expenseTypes[Math.floor(Math.random() * expenseTypes.length)],
-        amount: Math.floor(Math.random() * 10000) + 500,
-        description: `Expense description ${i + 1}`,
-        location: pumps[Math.floor(Math.random() * pumps.length)],
-        pumpId: `pump-${Math.floor(Math.random() * 4) + 1}`,
-    }));
-
-    // Generate stock data
-    const stockData = fuelTypes.map((fuel, i) => ({
-        fuelType: fuel,
-        quantity: Math.floor(Math.random() * 10000) + 1000,
-        price: fuel === "Premium" ? 280 : fuel === "Petrol" ? 260 : 250,
-        location: pumps[i % pumps.length],
-        lastUpdated: new Date(2025, 11, Math.floor(Math.random() * 10) + 1).toISOString(),
-        pumpId: `pump-${(i % 4) + 1}`,
-    }));
-
-    return {
-        sales: salesData,
-        employers: employerData,
-        pumps: pumpData,
-        expenses: expenseData,
-        stocks: stockData,
-    };
-};
-
 export default function ReportsMainPage() {
     const [selectedPump, setSelectedPump] = useState<string>("all");
     const [fromDate, setFromDate] = useState<Date | undefined>(undefined);
     const [toDate, setToDate] = useState<Date | undefined>(undefined);
     const [rawData, setRawData] = useState<ReportData>({ sales: [], employers: [], pumps: [], expenses: [], stocks: [] });
-    // const [isLoading, setIsLoading] = useState(true);
+    const [isLoading, setIsLoading] = useState(true);
+    const [pumpsList, setPumpsList] = useState<string[]>([]);
 
-    // Generate dummy data only on client side to prevent hydration errors
     useEffect(() => {
-        setRawData(generateDummyData());
-        // setIsLoading(false);
-    }, []);
+        const fetchData = async () => {
+            setIsLoading(true);
+            try {
+                const [salesRes, employersRes, pumpsRes, expensesRes, stocksRes] = await Promise.all([
+                    fetch("/api/sales"),
+                    fetch("/api/employers"),
+                    fetch("/api/fuel-pumps"),
+                    fetch("/api/expenses"),
+                    fetch("/api/stocks"),
+                ]);
 
-    const pumps = ["Pump 1", "Pump 2", "Pump 3", "Pump 4"];
+                const [sales, employers, pumps, expenses, stocks] = await Promise.all([
+                    salesRes.json(),
+                    employersRes.json(),
+                    pumpsRes.json(),
+                    expensesRes.json(),
+                    stocksRes.json(),
+                ]);
+
+                // Map Sales
+                const mappedSales = (Array.isArray(sales) ? sales : []).map((s: any) => ({
+                    orderId: s.id || (s._id ? s._id.slice(-6).toUpperCase() : "N/A"),
+                    date: s.createdAt,
+                    fuelType: s.items?.[0]?.category || "N/A",
+                    quantity: s.items?.reduce((sum: number, item: any) => sum + (item.quantityInLiters || item.quantity || 0), 0) || 0,
+                    totalPrice: s.grandTotal || 0,
+                    pump: s.pumpId?.pumpName || s.pumpId || "N/A",
+                    status: s.status || "Completed",
+                    pumpId: s.pumpId?._id || s.pumpId,
+                }));
+
+                // Map Employers
+                const mappedEmployers = (Array.isArray(employers) ? employers : []).map((e: any) => ({
+                    employerName: e.fullName,
+                    pump: e.fuelPump || "N/A",
+                    role: e.role || "Employee",
+                    email: e.email,
+                    dateJoined: e.joiningDate,
+                    status: e.status || "Active",
+                    pumpId: e.fuelPump,
+                    salary: e.monthlySalary || 0,
+                }));
+
+                // Map Pumps
+                const mappedPumps = (Array.isArray(pumps) ? pumps : []).map((p: any) => ({
+                    pumpId: p._id ? p._id.slice(-6).toUpperCase() : "N/A",
+                    location: p.pumpName,
+                    fuelType: Array.isArray(p.fuelProducts) ? p.fuelProducts.join(", ") : p.fuelProducts || "N/A",
+                    status: p.status || "Active",
+                    lastMaintenance: p.updatedAt || p.createdAt,
+                    totalDispensed: 0,
+                }));
+
+                // Map Expenses
+                const mappedExpenses = (Array.isArray(expenses) ? expenses : []).map((ex: any) => ({
+                    expenseId: ex._id ? ex._id.slice(-6).toUpperCase() : "N/A",
+                    date: ex.date,
+                    category: ex.expenseType,
+                    amount: Number(ex.amount) || 0,
+                    description: ex.expenseTitle,
+                    location: ex.pump || "N/A",
+                    pumpId: ex.pump,
+                }));
+
+                // Map Stocks
+                const mappedStocks = (Array.isArray(stocks) ? stocks : []).map((st: any) => ({
+                    fuelType: st.fuelType,
+                    quantity: Number(st.quantity) || 0,
+                    price: Number(st.salePricePerLiter) || 0,
+                    location: st.pump || "N/A",
+                    lastUpdated: st.updatedAt || st.createdAt,
+                    pumpId: st.pump,
+                }));
+
+                setRawData({
+                    sales: mappedSales,
+                    employers: mappedEmployers,
+                    pumps: mappedPumps,
+                    expenses: mappedExpenses,
+                    stocks: mappedStocks,
+                });
+
+                if (Array.isArray(pumps)) {
+                    setPumpsList(pumps.map((p: any) => p.pumpName));
+                }
+
+            } catch (error) {
+                console.error("Error fetching report data:", error);
+                toast.error("Failed to load real-time report data");
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchData();
+    }, []);
 
     // Filter data based on selected pump and date range
     const getFilteredData = () => {
@@ -140,11 +163,19 @@ export default function ReportsMainPage() {
             totalPumps: filteredData.pumps.length,
             fuelStock: filteredData.stocks.reduce((sum, stock) => sum + stock.quantity, 0),
             totalEmployers: filteredData.employers.length,
-            activePumps: filteredData.pumps.filter((p) => p.status === "Active").length,
+            activePumps: filteredData.pumps.filter((p) => p.status.toLowerCase() === "active").length,
         };
     };
 
     const overviewMetrics = calculateOverviewMetrics();
+
+    if (isLoading) {
+        return (
+            <div className="flex h-screen w-full items-center justify-center bg-[#f1f5f9]">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#14b8a6]"></div>
+            </div>
+        );
+    }
 
     return (
         <div className="p-6 space-y-6" suppressHydrationWarning>
@@ -163,7 +194,7 @@ export default function ReportsMainPage() {
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="all">All Pumps</SelectItem>
-                        {pumps.map((pump, idx) => (
+                        {pumpsList.map((pump, idx) => (
                             <SelectItem key={idx} value={pump}>
                                 {pump}
                             </SelectItem>
@@ -218,7 +249,11 @@ export default function ReportsMainPage() {
                 </TabsList>
 
                 <TabsContent value="overview">
-                    <OverviewReport metrics={overviewMetrics} salesData={filteredData.sales} />
+                    <OverviewReport
+                        metrics={overviewMetrics}
+                        salesData={filteredData.sales}
+                        expensesData={filteredData.expenses}
+                    />
                 </TabsContent>
 
                 <TabsContent value="sales">
@@ -226,11 +261,17 @@ export default function ReportsMainPage() {
                 </TabsContent>
 
                 <TabsContent value="employer">
-                    <EmployerReport employersData={filteredData.employers} />
+                    <EmployerReport
+                        employersData={filteredData.employers}
+                        salesData={filteredData.sales}
+                    />
                 </TabsContent>
 
                 <TabsContent value="pumps">
-                    <PumpsReport pumpsData={filteredData.pumps} />
+                    <PumpsReport
+                        pumpsData={filteredData.pumps}
+                        salesData={filteredData.sales}
+                    />
                 </TabsContent>
 
                 <TabsContent value="expense">

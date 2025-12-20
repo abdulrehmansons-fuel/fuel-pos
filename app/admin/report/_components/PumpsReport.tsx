@@ -10,21 +10,34 @@ import { format } from "date-fns";
 
 const COLORS = ['#14b8a6', '#06b6d4', '#0d9488', '#22d3ee'];
 
-import { PumpItem } from "./types";
+import { PumpItem, SalesItem } from "./types";
 
 interface PumpsReportProps {
   pumpsData: PumpItem[];
+  salesData: SalesItem[];
 }
 
-export function PumpsReport({ pumpsData }: PumpsReportProps) {
+export function PumpsReport({ pumpsData, salesData }: PumpsReportProps) {
+  // Calculate real dispensed fuel for each pump
+  const pumpMetrics = pumpsData.map(pump => {
+    const totalDispensed = salesData
+      .filter(s => s.pump === pump.location || s.pumpId === pump.pumpId)
+      .reduce((sum, s) => sum + s.quantity, 0);
+
+    return {
+      ...pump,
+      totalDispensed
+    };
+  });
+
   // Calculate metrics
-  const totalPumps = pumpsData.length;
-  const activePumps = pumpsData.filter((p) => p.status === "Active").length;
-  const maintenanceRequired = pumpsData.filter((p) => p.status === "Maintenance").length;
-  const totalFuelDispensed = pumpsData.reduce((sum, pump) => sum + pump.totalDispensed, 0);
+  const totalPumps = pumpMetrics.length;
+  const activePumps = pumpMetrics.filter((p) => p.status === "active").length;
+  const maintenanceRequired = pumpMetrics.filter((p) => p.status === "Maintenance").length;
+  const totalFuelDispensed = pumpMetrics.reduce((sum, pump) => sum + pump.totalDispensed, 0);
 
   // Prepare chart data
-  const fuelByPump = pumpsData.map((pump) => ({
+  const fuelByPump = pumpMetrics.map((pump) => ({
     name: pump.location,
     dispensed: pump.totalDispensed,
   }));
@@ -337,7 +350,7 @@ export function PumpsReport({ pumpsData }: PumpsReportProps) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {pumpsData.map((pump: PumpItem, index: number) => (
+              {pumpMetrics.map((pump: PumpItem, index: number) => (
                 <TableRow key={index}>
                   <TableCell className="font-medium">{pump.pumpId}</TableCell>
                   <TableCell>{pump.location}</TableCell>

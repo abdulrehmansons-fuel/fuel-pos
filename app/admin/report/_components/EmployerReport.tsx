@@ -10,18 +10,26 @@ import { format } from "date-fns";
 
 const COLORS = ['#14b8a6', '#06b6d4', '#0d9488', '#22d3ee', '#5eead4', '#2dd4bf'];
 
-import { EmployerItem } from "./types";
+import { EmployerItem, SalesItem } from "./types";
 
 interface EmployerReportProps {
   employersData: EmployerItem[];
+  salesData: SalesItem[];
 }
 
-export function EmployerReport({ employersData }: EmployerReportProps) {
+export function EmployerReport({ employersData, salesData }: EmployerReportProps) {
   // Calculate metrics
   const totalEmployers = employersData.length;
   const activeEmployers = employersData.filter((e) => e.status === "Active").length;
   const inactiveEmployers = employersData.filter((e) => e.status === "Inactive").length;
-  const avgShifts = 22; // Mock data
+
+  // Calculate total unique shifts (days worked by any employer)
+  const uniqueShifts = new Set(salesData.map(s => {
+    const date = format(new Date(s.date), "yyyy-MM-dd");
+    return `${date}-${s.pump}`; // Assuming pump-based shifts or similar
+  })).size;
+
+  const avgShifts = totalEmployers > 0 ? Math.round(uniqueShifts / totalEmployers) : 0;
 
   // Prepare chart data
   const employerDistribution = employersData.reduce((acc: { pump: string; count: number }[], emp) => {

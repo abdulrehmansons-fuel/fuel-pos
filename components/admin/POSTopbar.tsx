@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Bell, Search, User, LogOut } from "lucide-react";
+import { Bell, Search, User, LogOut, AlertTriangle, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -24,18 +24,55 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useAuth } from '@/hooks/use-auth';
+
+interface StockAlert {
+  category: string;
+  totalQuantity: number;
+}
 
 interface TopBarProps {
   title: string;
   showUserMenu?: boolean;
 }
 
-import { useAuth } from '@/hooks/use-auth';
-
 export const TopBar = ({ title, showUserMenu = false }: TopBarProps) => {
   const router = useRouter();
   const { logout } = useAuth();
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
+  const [stockAlerts, setStockAlerts] = useState<StockAlert[]>([]);
+
+  useEffect(() => {
+    const fetchStocks = async () => {
+      try {
+        const res = await fetch("/api/stocks");
+        const stocks = await res.json();
+
+        if (Array.isArray(stocks)) {
+          // Aggregate by fuelType
+          const aggregation: Record<string, number> = {};
+          stocks.forEach((s: any) => {
+            const cat = s.fuelType || "Other";
+            aggregation[cat] = (aggregation[cat] || 0) + (Number(s.quantity) || 0);
+          });
+
+          // Filter categories below 100L
+          const alerts = Object.entries(aggregation)
+            .filter(([_, total]) => total < 100)
+            .map(([category, totalQuantity]) => ({ category, totalQuantity }));
+
+          setStockAlerts(alerts);
+        }
+      } catch (error) {
+        console.error("Error fetching stocks for notifications:", error);
+      }
+    };
+
+    fetchStocks();
+    // Refresh notifications every 5 minutes
+    const interval = setInterval(fetchStocks, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleLogout = async () => {
     await logout();
@@ -60,12 +97,70 @@ export const TopBar = ({ title, showUserMenu = false }: TopBarProps) => {
           </div>
 
           {/* Notifications */}
-          <Button variant="ghost" size="icon" className="relative rounded-xl">
-            <Bell className="h-5 w-5" />
-            <Badge className="absolute -right-1 -top-1 h-5 w-5 rounded-full bg-primary p-0 text-xs">
-              3
-            </Badge>
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="relative rounded-xl">
+                <Bell className="h-5 w-5" />
+                {stockAlerts.length > 0 && (
+                  <Badge className="absolute -right-1 -top-1 h-5 w-5 rounded-full bg-red-500 hover:bg-red-600 p-0 text-xs flex items-center justify-center border-2 border-white">
+                    {stockAlerts.length}
+                  </Badge>
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-[300px] rounded-xl p-2">
+              <DropdownMenuLabel className="flex items-center justify-between">
+                <span>Notifications</span>
+                {stockAlerts.length > 0 && (
+                  <Badge variant="outline" className="text-red-600 border-red-200 bg-red-50 text-[10px]">
+                    {stockAlerts.length} Low Stock Alert{stockAlerts.length > 1 ? 's' : ''}
+                  </Badge>
+                )}
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {stockAlerts.length === 0 ? (
+                <div className="py-8 px-4 text-center">
+                  <Package className="h-10 w-10 text-muted-foreground/30 mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">No new notifications</p>
+                </div>
+              ) : (
+                <div className="max-h-[300px] overflow-y-auto">
+                  {stockAlerts.map((alert, idx) => (
+                    <DropdownMenuItem
+                      key={idx}
+                      className="cursor-pointer p-3 rounded-lg focus:bg-red-50 group mb-1"
+                      onClick={() => router.push("/admin/stock")}
+                    >
+                      <div className="flex gap-3">
+                        <div className="h-8 w-8 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 group-focus:bg-red-200">
+                          <AlertTriangle className="h-4 w-4 text-red-600" />
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <p className="text-sm font-semibold text-foreground">
+                            Low Stock: {alert.category}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Total volume is only <span className="text-red-600 font-bold">{alert.totalQuantity.toFixed(1)}L</span>. Category combined stock is below the <span className="font-medium">100L</span> threshold.
+                          </p>
+                        </div>
+                      </div>
+                    </DropdownMenuItem>
+                  ))}
+                </div>
+              )}
+              {stockAlerts.length > 0 && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    className="justify-center text-xs text-primary font-medium cursor-pointer hover:bg-primary/5 py-2"
+                    onClick={() => router.push("/admin/stock")}
+                  >
+                    Manage Inventory
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           {/* User Menu */}
           {showUserMenu && (
