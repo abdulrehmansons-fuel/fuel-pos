@@ -230,7 +230,7 @@ export default function AdminSaleView() {
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                             <div>
                                 <p className="text-xs uppercase tracking-wide text-[#64748b] mb-1">Sale ID</p>
-                                <p className="text-sm font-semibold text-[#020617]">SALE-{sale._id.slice(-6).toUpperCase()}</p>
+                                <p className="text-sm font-semibold text-[#020617]">SALE-{sale._id?.slice(-6).toUpperCase()}</p>
                             </div>
                             <div>
                                 <p className="text-xs uppercase tracking-wide text-[#64748b] mb-1">Pump Name</p>

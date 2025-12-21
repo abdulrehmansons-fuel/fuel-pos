@@ -174,7 +174,7 @@ export async function PUT(
             id,
             updateData,
             { new: true, runValidators: true }
-        ) as unknown as Record<string, unknown>;
+        ).lean() as unknown as Record<string, unknown>;
 
         if (!updatedSale) {
             return NextResponse.json({ error: "Sale not found" }, { status: 404 });

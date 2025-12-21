@@ -229,7 +229,7 @@ const Sales = () => {
                                 filteredSales.map((sale) => (
                                     <TableRow key={sale._id} className="hover:bg-gray-100">
                                         <TableCell className="font-medium text-[#020617]">
-                                            SALE-{sale._id.slice(-6).toUpperCase()}
+                                            SALE-{sale._id?.slice(-6).toUpperCase()}
                                         </TableCell>
                                         <TableCell className="text-[#020617] max-w-[200px] truncate">
                                             {sale.items.map((item: { productName: string }) => item.productName).join(", ")}

@@ -146,7 +146,7 @@ export default function AdminEditSale() {
                     </Button>
                     <div>
                         <h1 className="text-2xl font-bold text-[#020617]">Edit Sale Payment</h1>
-                        <p className="text-sm text-[#64748b]">Update payment details for SALE-{sale._id.slice(-6).toUpperCase()}</p>
+                        <p className="text-sm text-[#64748b]">Update payment details for SALE-{sale._id?.slice(-6).toUpperCase()}</p>
                     </div>
                 </div>
 

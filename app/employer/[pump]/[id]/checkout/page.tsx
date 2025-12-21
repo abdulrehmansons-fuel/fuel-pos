@@ -249,7 +249,7 @@ export default function CheckoutPage() {
                                     <span className="label">Receipt #:</span>
                                     <span>
                                         {completedSaleData
-                                            ? `SALE-${completedSaleData._id.slice(-6).toUpperCase()}`
+                                            ? `SALE-${completedSaleData?._id?.slice(-6).toUpperCase()}`
                                             : `PENDING`
                                         }
                                     </span>
