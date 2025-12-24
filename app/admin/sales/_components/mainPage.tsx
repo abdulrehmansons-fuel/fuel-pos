@@ -21,6 +21,16 @@ import {
 } from "@/components/ui/table";
 import { Search, Eye, Check, X, DollarSign, Clock, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Sale {
     _id: string;
@@ -40,6 +50,9 @@ const Sales = () => {
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
     const [statusFilter, setStatusFilter] = useState("all");
+    const [confirmOpen, setConfirmOpen] = useState(false);
+    const [confirmAction, setConfirmAction] = useState<"Approve" | "Reject" | null>(null);
+    const [selectedSaleId, setSelectedSaleId] = useState<string | null>(null);
 
     useEffect(() => {
         fetchSales();
@@ -111,6 +124,10 @@ const Sales = () => {
         } catch (error) {
             console.error("Error approving sale:", error);
             toast.error("Failed to approve sale");
+        } finally {
+            setConfirmOpen(false);
+            setConfirmAction(null);
+            setSelectedSaleId(null);
         }
     };
 
@@ -129,7 +146,17 @@ const Sales = () => {
         } catch (error) {
             console.error("Error rejecting sale:", error);
             toast.error("Failed to reject sale");
+        } finally {
+            setConfirmOpen(false);
+            setConfirmAction(null);
+            setSelectedSaleId(null);
         }
+    };
+
+    const openConfirmDialog = (action: "Approve" | "Reject", id: string) => {
+        setConfirmAction(action);
+        setSelectedSaleId(id);
+        setConfirmOpen(true);
     };
 
     return (
@@ -257,14 +284,14 @@ const Sales = () => {
                                                     <>
                                                         <Button
                                                             size="sm"
-                                                            onClick={() => handleApprove(sale._id)}
+                                                            onClick={() => openConfirmDialog("Approve", sale._id)}
                                                             className="bg-[#22c55e] hover:bg-green-600 text-white h-8 px-3"
                                                         >
                                                             <Check className="h-4 w-4" />
                                                         </Button>
                                                         <Button
                                                             size="sm"
-                                                            onClick={() => handleReject(sale._id)}
+                                                            onClick={() => openConfirmDialog("Reject", sale._id)}
                                                             className="bg-[#dc2626] hover:bg-red-700 text-white h-8 px-3"
                                                         >
                                                             <X className="h-4 w-4" />
@@ -288,6 +315,36 @@ const Sales = () => {
                     </Table>
                 </Card>
             </div>
+
+            <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+                <AlertDialogContent className="bg-white">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>
+                            {confirmAction === "Approve" ? "Confirm Approval" : "Confirm Rejection"}
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Are you sure you want to {confirmAction?.toLowerCase()} this sale? This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel className="rounded-md">Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={() => {
+                                if (selectedSaleId) {
+                                    if (confirmAction === "Approve") {
+                                        handleApprove(selectedSaleId);
+                                    } else if (confirmAction === "Reject") {
+                                        handleReject(selectedSaleId);
+                                    }
+                                }
+                            }}
+                            className={confirmAction === "Approve" ? "bg-[#22c55e] hover:bg-green-600 rounded-md" : "bg-[#dc2626] hover:bg-red-700 rounded-md"}
+                        >
+                            Confirm
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 };

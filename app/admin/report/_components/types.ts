@@ -4,6 +4,8 @@ export interface SalesItem {
     fuelType: string;
     quantity: number;
     totalPrice: number;
+    purchasePrice: number;
+    totalProfit: number;
     pump: string;
     status: string;
     pumpId: string;
@@ -18,6 +20,7 @@ export interface EmployerItem {
     status: string;
     pumpId: string;
     salary: number;
+    totalProfit?: number;
 }
 
 export interface PumpItem {
@@ -27,6 +30,7 @@ export interface PumpItem {
     status: string;
     lastMaintenance: string;
     totalDispensed: number;
+    totalProfit?: number;
 }
 
 export interface ExpenseItem {
@@ -43,6 +47,7 @@ export interface StockItem {
     fuelType: string;
     quantity: number;
     price: number;
+    purchasePrice: number;
     location: string;
     lastUpdated: string;
     pumpId: string;

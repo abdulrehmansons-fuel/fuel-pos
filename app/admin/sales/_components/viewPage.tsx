@@ -11,8 +11,18 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { ArrowLeft, Check, X } from "lucide-react";
+import { ArrowLeft, Check, X, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface SaleItem {
     productName: string;
@@ -60,6 +70,8 @@ export default function AdminSaleView() {
     const [sale, setSale] = useState<Sale | null>(null);
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState(false);
+    const [confirmOpen, setConfirmOpen] = useState(false);
+    const [confirmAction, setConfirmAction] = useState<"Approve" | "Reject" | "Delete" | null>(null);
 
     useEffect(() => {
         const fetchSale = async () => {
@@ -103,6 +115,8 @@ export default function AdminSaleView() {
             toast.error("Failed to approve sale");
         } finally {
             setActionLoading(false);
+            setConfirmOpen(false);
+            setConfirmAction(null);
         }
     };
 
@@ -127,7 +141,37 @@ export default function AdminSaleView() {
             toast.error("Failed to reject sale");
         } finally {
             setActionLoading(false);
+            setConfirmOpen(false);
+            setConfirmAction(null);
         }
+    };
+
+    const handleDelete = async () => {
+        if (!sale) return;
+
+        setActionLoading(true);
+        try {
+            const response = await fetch(`/api/sales/${saleId}`, {
+                method: "DELETE",
+            });
+
+            if (!response.ok) throw new Error("Failed to delete sale");
+
+            toast.success("Sale deleted successfully");
+            router.push("/admin/sales");
+        } catch (error) {
+            console.error("Error deleting sale:", error);
+            toast.error("Failed to delete sale");
+        } finally {
+            setActionLoading(false);
+            setConfirmOpen(false);
+            setConfirmAction(null);
+        }
+    };
+
+    const openConfirmDialog = (action: "Approve" | "Reject" | "Delete") => {
+        setConfirmAction(action);
+        setConfirmOpen(true);
     };
 
     const getStatusBadge = (status: Sale["status"]) => {
@@ -195,23 +239,32 @@ export default function AdminSaleView() {
                         >
                             Edit
                         </Button>
+                        <Button
+                            variant="destructive"
+                            onClick={() => openConfirmDialog("Delete")}
+                            disabled={actionLoading}
+                            className="bg-[#dc2626] hover:bg-red-700 text-white gap-2"
+                        >
+                            <Trash2 className="h-4 w-4" />
+                            Delete
+                        </Button>
                         {sale.status === "Pending" ? (
                             <>
                                 <Button
-                                    onClick={handleApprove}
+                                    onClick={() => openConfirmDialog("Approve")}
                                     disabled={actionLoading}
                                     className="bg-[#22c55e] hover:bg-green-600 text-white gap-2"
                                 >
                                     <Check className="h-4 w-4" />
-                                    {actionLoading ? "Approving..." : "Approve"}
+                                    {actionLoading && confirmAction === "Approve" ? "Approving..." : "Approve"}
                                 </Button>
                                 <Button
-                                    onClick={handleReject}
+                                    onClick={() => openConfirmDialog("Reject")}
                                     disabled={actionLoading}
                                     className="bg-[#dc2626] hover:bg-red-700 text-white gap-2"
                                 >
                                     <X className="h-4 w-4" />
-                                    {actionLoading ? "Rejecting..." : "Reject"}
+                                    {actionLoading && confirmAction === "Reject" ? "Rejecting..." : "Reject"}
                                 </Button>
                             </>
                         ) : (
@@ -363,6 +416,38 @@ export default function AdminSaleView() {
                     )}
                 </Card>
             </div>
+
+            <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+                <AlertDialogContent className="bg-white">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>
+                            {confirmAction === "Approve" ? "Confirm Approval" : confirmAction === "Reject" ? "Confirm Rejection" : "Confirm Deletion"}
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                            {confirmAction === "Delete"
+                                ? "Are you sure you want to delete this sale? This action is permanent and cannot be undone."
+                                : `Are you sure you want to ${confirmAction?.toLowerCase()} this sale? This action cannot be undone.`}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel className="rounded-md">Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={() => {
+                                if (confirmAction === "Approve") {
+                                    handleApprove();
+                                } else if (confirmAction === "Reject") {
+                                    handleReject();
+                                } else if (confirmAction === "Delete") {
+                                    handleDelete();
+                                }
+                            }}
+                            className={confirmAction === "Approve" ? "bg-[#22c55e] hover:bg-green-600 rounded-md" : "bg-[#dc2626] hover:bg-red-700 rounded-md"}
+                        >
+                            Confirm
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

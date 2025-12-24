@@ -38,12 +38,38 @@ import {
 import { toast } from "sonner";
 import { format, subMonths, startOfMonth } from "date-fns";
 
+interface DashboardSaleItem {
+  category: string;
+  fuelType?: string;
+  rate?: number;
+  total?: number;
+  quantityInLiters?: number;
+  quantity?: number;
+  price?: number;
+  totalPrice?: number;
+}
+
+interface DashboardSale {
+  status?: string;
+  items?: DashboardSaleItem[];
+  grandTotal?: number;
+  createdAt: string | Date;
+  id?: string;
+  _id?: string;
+}
+
+interface DashboardStock {
+  fuelType: string;
+  purchasePricePerLiter?: number;
+  purchasePrice?: number;
+}
+
 export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [metrics, setMetrics] = useState({
     totalRevenue: 0,
     totalExpenses: 0,
-    netProfit: 0,
+    totalProfit: 0,
     profitMargin: "0",
     totalFuelSold: 0,
     revGrowth: 0,
@@ -80,13 +106,28 @@ export default function Dashboard() {
         const expensesArr = Array.isArray(expenses) ? expenses : [];
         const stocksArr = Array.isArray(stocks) ? stocks : [];
 
-        // 1. Basic Metrics
-        const totalRevenue = salesArr.reduce((sum: number, s: { grandTotal?: number }) => sum + (s.grandTotal || 0), 0);
-        const totalExpenses = expensesArr.reduce((sum: number, e: { amount?: string | number }) => sum + (Number(e.amount) || 0), 0);
-        const netProfit = totalRevenue - totalExpenses;
-        const profitMargin = totalRevenue > 0 ? ((netProfit / totalRevenue) * 100).toFixed(1) : "0";
+        // Filter for Approved Sales only
+        const approvedSales = salesArr.filter((s: { status?: string }) => s.status === "Approved");
 
-        const totalFuelSold = salesArr.reduce((sum: number, s: { items?: { quantity?: number; quantityInLiters?: number }[] }) => {
+        // 1. Accurate Metrics (Based on Approved Sales)
+        const totalRevenue = approvedSales.reduce((sum: number, s: { grandTotal?: number }) => sum + (s.grandTotal || 0), 0);
+
+        // Calculate Total Profit (Sales margin only: Sale Price - Purchase Price)
+        const totalProfitFromSales = approvedSales.reduce((totalSum: number, s: DashboardSale) => {
+          const saleProfit = s.items?.reduce((sum: number, item: DashboardSaleItem) => {
+            const stockItem = stocksArr.find((st: DashboardStock) => st.fuelType === (item.category || item.fuelType));
+            const purchasePrice = stockItem?.purchasePricePerLiter || stockItem?.purchasePrice || 0;
+            const salePrice = item.rate || (item.total && (item.quantityInLiters || item.quantity) ? item.total / (item.quantityInLiters || item.quantity!) : 0) || 0;
+            const quantity = item.quantityInLiters || item.quantity || 0;
+            return sum + ((salePrice - purchasePrice) * quantity);
+          }, 0) || 0;
+          return totalSum + saleProfit;
+        }, 0);
+
+        const totalExpenses = expensesArr.reduce((sum: number, e: { amount?: string | number }) => sum + (Number(e.amount) || 0), 0);
+        const profitMargin = totalRevenue > 0 ? ((totalProfitFromSales / totalRevenue) * 100).toFixed(1) : "0";
+
+        const totalFuelSold = approvedSales.reduce((sum: number, s: { items?: { quantity?: number; quantityInLiters?: number }[] }) => {
           return sum + (s.items?.reduce((iSum: number, item: { quantity?: number; quantityInLiters?: number }) => iSum + (item.quantity || item.quantityInLiters || 0), 0) || 0);
         }, 0);
 
@@ -101,7 +142,7 @@ export default function Dashboard() {
           };
         });
 
-        salesArr.forEach((s: { createdAt: string | Date; grandTotal?: number }) => {
+        approvedSales.forEach((s: { createdAt: string | Date; grandTotal?: number }) => {
           const sDate = new Date(s.createdAt);
           const monthIndex = last7Months.findIndex(m =>
             m.fullDate.getMonth() === sDate.getMonth() && m.fullDate.getFullYear() === sDate.getFullYear()
@@ -129,7 +170,7 @@ export default function Dashboard() {
           "Lubricants": { value: 0, color: "#f59e0b" }
         };
 
-        salesArr.forEach((s: { items?: { category?: string; quantity?: number; quantityInLiters?: number }[] }) => {
+        approvedSales.forEach((s: { items?: { category?: string; quantity?: number; quantityInLiters?: number }[] }) => {
           s.items?.forEach((item: { category?: string; quantity?: number; quantityInLiters?: number }) => {
             const cat = item.category || "Other";
             if (categoryMap[cat]) {
@@ -149,8 +190,8 @@ export default function Dashboard() {
             color: data.color
           }));
 
-        // 4. Recent Sales (Last 5)
-        const recentSales = salesArr.slice(0, 5).map((s: { id?: string; _id?: string; items?: { productName?: string; category?: string }[]; grandTotal?: number; status?: string; createdAt: string }) => ({
+        // 4. Recent Sales (Last 5 Approved)
+        const recentSales = approvedSales.slice(0, 5).map((s: { id?: string; _id?: string; items?: { productName?: string; category?: string }[]; grandTotal?: number; status?: string; createdAt: string }) => ({
           id: s.id || (s._id ? s._id.slice(-5).toUpperCase() : "N/A"),
           product: s.items?.[0]?.productName || s.items?.[0]?.category || "Fuel",
           amount: s.grandTotal || 0,
@@ -172,10 +213,10 @@ export default function Dashboard() {
         setMetrics({
           totalRevenue,
           totalExpenses,
-          netProfit,
+          totalProfit: totalProfitFromSales,
           profitMargin,
           totalFuelSold,
-          revGrowth: 12.5, // Mock growth for now or calculate if needed
+          revGrowth: 12.5,
           expGrowth: 4.2,
           volGrowth: 8.1
         });
@@ -206,7 +247,7 @@ export default function Dashboard() {
     );
   }
 
-  const { totalRevenue, totalExpenses, netProfit, profitMargin, totalFuelSold, revGrowth, expGrowth, volGrowth } = metrics;
+  const { totalRevenue, totalExpenses, totalProfit, profitMargin, totalFuelSold, revGrowth, expGrowth, volGrowth } = metrics;
   const { financialData, fuelSalesData, recentSales, stockAlerts } = charts;
 
   return (
@@ -270,14 +311,14 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Net Profit Card */}
+        {/* Total Profit Card */}
         <Card className="bg-white border-none shadow-sm rounded-xl">
           <CardContent className="p-6">
             <div className="flex justify-between items-start">
               <div>
-                <p className="text-sm font-medium text-[#64748b]">Net Profit</p>
+                <p className="text-sm font-medium text-[#64748b]">Total Profit</p>
                 <h3 className="text-2xl font-bold text-[#020617] mt-2">
-                  Rs. {netProfit.toLocaleString()}
+                  Rs. {totalProfit.toLocaleString()}
                 </h3>
               </div>
               <div className="p-2 bg-blue-50 rounded-lg">

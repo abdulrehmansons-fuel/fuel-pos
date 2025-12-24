@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { DollarSign, TrendingDown, Receipt, Download } from "lucide-react";
+import { DollarSign, TrendingDown, Download } from "lucide-react";
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { format } from "date-fns";
 
@@ -20,8 +20,6 @@ interface ExpenseReportProps {
 export function ExpenseReport({ expensesData, totalRevenue }: ExpenseReportProps) {
   // Calculate metrics
   const totalExpenses = expensesData.reduce((sum, expense) => sum + expense.amount, 0);
-  const totalProfit = totalRevenue - totalExpenses;
-  const costOfGoodsSold = Math.floor(totalRevenue * 0.6); // Mock COGS
 
   // Prepare chart data
   const expenseTrendData = expensesData.slice(0, 10).map((expense) => ({
@@ -50,7 +48,7 @@ export function ExpenseReport({ expensesData, totalRevenue }: ExpenseReportProps
       <head>
         <title>Expenses Report</title>
         <meta charset="UTF-8">
-        <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2314b8a6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 3h10v18H4z'/%3E%3Cpath d='M14 7h2a2 2 0 0 1 2 2v7'/%3E%3Cpath d='M9 17h6'/%3E%3C/svg%3E" />
+        <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAyNCAyNCcgZmlsbD0nbm9uZScgc3Ryb2tlPScjMTRiOGE2JyBzdHJva2Utd2lkdGg9JzInIHN0cm9rZS1saW5lY2FwPSdyb3VuZCcgc3Ryb2tlLWxpbmVqb2luPSdyb3VuZCc+PHBhdGggZD0nTTQgM2gxMHYxOEg0eicvPjxwYXRoIGQ9J00xNCA3aDJhMiAyIDAgMCAxIDIgMnY3Jy8+PHBhdGggZD0nTTkgMTdoNicvPjwvc3ZnPg==" />
         <style>
           * { box-sizing: border-box; }
           body { 
@@ -169,15 +167,6 @@ export function ExpenseReport({ expensesData, totalRevenue }: ExpenseReportProps
               <div class="metric-label">💸 Total Expenses</div>
               <div class="metric-value negative">${formatCurrency(totalExpenses)}</div>
             </div>
-            <div class="metric">
-              <div class="metric-label">📈 Gross Profit</div>
-              <div class="metric-value ${totalProfit >= 0 ? 'positive' : 'negative'}">
-                ${formatCurrency(totalProfit)}
-              </div>
-            </div>
-            <div class="metric">
-              <div class="metric-label">📦 Cost of Goods Sold</div>
-              <div class="metric-value">${formatCurrency(costOfGoodsSold)}</div>
             </div>
           </div>
         </div>
@@ -249,29 +238,6 @@ export function ExpenseReport({ expensesData, totalRevenue }: ExpenseReportProps
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Gross Profit</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className={`text-2xl font-bold ${totalProfit >= 0 ? 'text-primary' : 'text-red-600'}`}>
-              ₨ {totalProfit.toLocaleString()}
-            </div>
-            <p className="text-xs text-muted-foreground">Revenue - Expenses</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Cost of Goods Sold</CardTitle>
-            <Receipt className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">₨ {costOfGoodsSold.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">Fuel costs</p>
-          </CardContent>
-        </Card>
       </div>
 
       {/* Charts */}

@@ -188,7 +188,7 @@ export function OverviewReport({ metrics, salesData, expensesData }: OverviewRep
               <div class="metric-value">${metrics.totalOrders}</div>
             </div>
             <div class="metric">
-              <div class="metric-label">📈 Total Profit</div>
+              <div class="metric-label">📈 Total Profit (Sales)</div>
               <div class="metric-value ${metrics.totalProfit >= 0 ? 'positive' : 'negative'}">${formatCurrency(metrics.totalProfit)}</div>
             </div>
             <div class="metric">
@@ -224,16 +224,16 @@ export function OverviewReport({ metrics, salesData, expensesData }: OverviewRep
           <div class="section-title">💼 Financial Summary</div>
           <div class="summary">
             <div class="summary-item">
-              <span>Total Revenue</span>
-              <span class="metric-value positive">${formatCurrency(metrics.totalRevenue)}</span>
+              <span>Total Gross Profit</span>
+              <span class="metric-value positive">${formatCurrency(metrics.totalProfit)}</span>
             </div>
             <div class="summary-item">
               <span>Total Expenses</span>
               <span class="metric-value negative">${formatCurrency(metrics.totalExpenses)}</span>
             </div>
             <div class="summary-item">
-              <span>Net Profit</span>
-              <span>${formatCurrency(metrics.totalProfit)}</span>
+              <span>Net Business Profit</span>
+              <span>${formatCurrency(metrics.totalProfit - metrics.totalExpenses)}</span>
             </div>
           </div>
         </div>
@@ -279,14 +279,14 @@ export function OverviewReport({ metrics, salesData, expensesData }: OverviewRep
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Profit</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Profit (Sales)</CardTitle>
             <TrendingUp className="h-4 w-4 text-success" />
           </CardHeader>
           <CardContent>
             <div className={`text-2xl font-bold ${metrics.totalProfit >= 0 ? 'text-success' : 'text-red-600'}`}>
               ₨ {metrics.totalProfit.toLocaleString()}
             </div>
-            <p className="text-xs text-muted-foreground">Revenue - Expenses</p>
+            <p className="text-xs text-muted-foreground">Sale - Purchase Price</p>
           </CardContent>
         </Card>
 
@@ -405,13 +405,17 @@ export function OverviewReport({ metrics, salesData, expensesData }: OverviewRep
               <span className="text-primary font-bold">₨ {metrics.totalRevenue.toLocaleString()}</span>
             </div>
             <div className="flex justify-between items-center border-b pb-2">
+              <span className="font-medium">Total Sales Profit</span>
+              <span className="text-success font-bold">₨ {metrics.totalProfit.toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between items-center border-b pb-2">
               <span className="font-medium">Total Expenses</span>
               <span className="text-red-600 font-bold">₨ {metrics.totalExpenses.toLocaleString()}</span>
             </div>
             <div className="flex justify-between items-center pt-2 bg-primary/10 p-3 rounded-lg">
-              <span className="font-bold text-lg">Net Profit</span>
-              <span className={`font-bold text-lg ${metrics.totalProfit >= 0 ? 'text-success' : 'text-red-600'}`}>
-                ₨ {metrics.totalProfit.toLocaleString()}
+              <span className="font-bold text-lg">Net Profit (Net Income)</span>
+              <span className={`font-bold text-lg ${(metrics.totalProfit - metrics.totalExpenses) >= 0 ? 'text-success' : 'text-red-600'}`}>
+                ₨ {(metrics.totalProfit - metrics.totalExpenses).toLocaleString()}
               </span>
             </div>
           </div>

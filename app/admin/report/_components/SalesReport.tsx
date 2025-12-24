@@ -19,8 +19,8 @@ interface SalesReportProps {
 export function SalesReport({ salesData }: SalesReportProps) {
   // Calculate metrics
   const totalRevenue = salesData.reduce((sum, sale) => sum + sale.totalPrice, 0);
+  const totalProfit = salesData.reduce((sum, sale) => sum + sale.totalProfit, 0);
   const totalOrders = salesData.length;
-  const avgOrderValue = totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 0;
 
   // Prepare chart data
   const salesTrendData = salesData.slice(0, 10).map((sale) => ({
@@ -49,7 +49,7 @@ export function SalesReport({ salesData }: SalesReportProps) {
       <head>
         <title>Sales Report</title>
         <meta charset="UTF-8">
-        <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2314b8a6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 3h10v18H4z'/%3E%3Cpath d='M14 7h2a2 2 0 0 1 2 2v7'/%3E%3Cpath d='M9 17h6'/%3E%3C/svg%3E" />
+        <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAyNCAyNCcgZmlsbD0nbm9uZScgc3Ryb2tlPScjMTRiOGE2JyBzdHJva2Utd2lkdGg9JzInIHN0cm9rZS1saW5lY2FwPSdyb3VuZCcgc3Ryb2tlLWxpbmVqb2luPSdyb3VuZCc+PHBhdGggZD0nTTQgM2gxMHYxOEg0eicvPjxwYXRoIGQ9J00xNCA3aDJhMiAyIDAgMCAxIDIgMnY3Jy8+PHBhdGggZD0nTTkgMTdoNicvPjwvc3ZnPg==" />
         <style>
           * { box-sizing: border-box; }
           body { 
@@ -162,16 +162,16 @@ export function SalesReport({ salesData }: SalesReportProps) {
           <div class="section-title">📊 Sales Summary</div>
           <div class="metrics">
             <div class="metric">
-              <div class="metric-label">💰 Total Sales</div>
+              <div class="metric-label">💰 Total Revenue</div>
               <div class="metric-value positive">${formatCurrency(totalRevenue)}</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">📈 Total Profit</div>
+              <div class="metric-value positive">${formatCurrency(totalProfit)}</div>
             </div>
             <div class="metric">
               <div class="metric-label">🛒 Orders Completed</div>
               <div class="metric-value">${totalOrders}</div>
-            </div>
-            <div class="metric">
-              <div class="metric-label">📈 Avg Order Value</div>
-              <div class="metric-value">${formatCurrency(avgOrderValue)}</div>
             </div>
           </div>
         </div>
@@ -186,6 +186,7 @@ export function SalesReport({ salesData }: SalesReportProps) {
                 <th>Fuel Type</th>
                 <th>Quantity</th>
                 <th>Total Price</th>
+                <th>Profit</th>
                 <th>Pump</th>
                 <th>Status</th>
               </tr>
@@ -198,9 +199,10 @@ export function SalesReport({ salesData }: SalesReportProps) {
                   <td>${order.fuelType}</td>
                   <td>${order.quantity} L</td>
                   <td>${formatCurrency(order.totalPrice)}</td>
+                  <td style="color: #14b8a6; font-weight: 600;">${formatCurrency(order.totalProfit)}</td>
                   <td>${order.pump}</td>
                   <td>
-                    <span class="badge ${order.status === 'Completed' ? 'badge-success' : 'badge-danger'}">
+                    <span class="badge ${order.status === 'Approved' ? 'badge-success' : 'badge-danger'}">
                       ${order.status}
                     </span>
                   </td>
@@ -251,14 +253,15 @@ export function SalesReport({ salesData }: SalesReportProps) {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg Order Value</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Total Profit</CardTitle>
+            <TrendingUp className="h-4 w-4 text-success" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">₨ {avgOrderValue.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">+4.1% from last month</p>
+            <div className="text-2xl font-bold text-success">₨ {totalProfit.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">Sale - Purchase Price</p>
           </CardContent>
         </Card>
+
       </div>
 
       {/* Charts */}
@@ -327,6 +330,7 @@ export function SalesReport({ salesData }: SalesReportProps) {
                 <TableHead>Fuel Type</TableHead>
                 <TableHead>Quantity</TableHead>
                 <TableHead>Total Price</TableHead>
+                <TableHead>Profit</TableHead>
                 <TableHead>Pump</TableHead>
                 <TableHead>Status</TableHead>
               </TableRow>
@@ -339,11 +343,12 @@ export function SalesReport({ salesData }: SalesReportProps) {
                   <TableCell>{order.fuelType}</TableCell>
                   <TableCell>{order.quantity} L</TableCell>
                   <TableCell>₨ {order.totalPrice.toLocaleString()}</TableCell>
+                  <TableCell className="text-success font-semibold">₨ {order.totalProfit.toLocaleString()}</TableCell>
                   <TableCell>
                     <Badge variant="outline">{order.pump}</Badge>
                   </TableCell>
                   <TableCell>
-                    <Badge variant={order.status === "Completed" ? "default" : "destructive"}>
+                    <Badge variant={order.status === "Approved" ? "default" : "destructive"}>
                       {order.status}
                     </Badge>
                   </TableCell>

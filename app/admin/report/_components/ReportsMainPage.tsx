@@ -48,16 +48,15 @@ export default function ReportsMainPage() {
                     stocksRes.json(),
                 ]);
 
-                // Map Sales
-                const mappedSales = (Array.isArray(sales) ? sales : []).map((s: { id?: string; _id?: string; createdAt?: string; items?: { category?: string; quantityInLiters?: number; quantity?: number }[]; grandTotal?: number; pumpId?: { pumpName?: string; _id?: string } | string; status?: string }) => ({
-                    orderId: s.id || (s._id ? s._id.slice(-6).toUpperCase() : "N/A"),
-                    date: s.createdAt || "",
-                    fuelType: s.items?.[0]?.category || "N/A",
-                    quantity: s.items?.reduce((sum: number, item: { quantityInLiters?: number; quantity?: number }) => sum + (item.quantityInLiters || item.quantity || 0), 0) || 0,
-                    totalPrice: s.grandTotal || 0,
-                    pump: (typeof s.pumpId === 'object' ? s.pumpId?.pumpName : s.pumpId) || "N/A",
-                    status: s.status || "Completed",
-                    pumpId: (typeof s.pumpId === 'object' ? s.pumpId?._id : s.pumpId) || "",
+                // Map Stocks
+                const mappedStocks = (Array.isArray(stocks) ? stocks : []).map((st: { fuelType: string; quantity: string | number; salePricePerLiter: string | number; purchasePricePerLiter?: string | number; pump?: string; updatedAt?: string; createdAt?: string }) => ({
+                    fuelType: st.fuelType,
+                    quantity: Number(st.quantity) || 0,
+                    price: Number(st.salePricePerLiter) || 0,
+                    purchasePrice: Number(st.purchasePricePerLiter) || 0,
+                    location: st.pump || "N/A",
+                    lastUpdated: st.updatedAt || st.createdAt,
+                    pumpId: st.pump,
                 }));
 
                 // Map Employers
@@ -93,15 +92,37 @@ export default function ReportsMainPage() {
                     pumpId: ex.pump,
                 }));
 
-                // Map Stocks
-                const mappedStocks = (Array.isArray(stocks) ? stocks : []).map((st: { fuelType: string; quantity: string | number; salePricePerLiter: string | number; pump?: string; updatedAt?: string; createdAt?: string }) => ({
-                    fuelType: st.fuelType,
-                    quantity: Number(st.quantity) || 0,
-                    price: Number(st.salePricePerLiter) || 0,
-                    location: st.pump || "N/A",
-                    lastUpdated: st.updatedAt || st.createdAt,
-                    pumpId: st.pump,
-                }));
+                // Map Sales
+                const mappedSales = (Array.isArray(sales) ? sales : []).map((s: { id?: string; _id?: string; createdAt?: string; items?: { category?: string; quantityInLiters?: number; quantity?: number; rate?: number }[]; grandTotal?: number; pumpId?: { pumpName?: string; _id?: string } | string; status?: string }) => {
+                    const pumpName = (typeof s.pumpId === 'object' ? s.pumpId?.pumpName : s.pumpId) || "N/A";
+
+                    // Approximate purchase price and profit
+                    let totalPurchasePrice = 0;
+                    s.items?.forEach(item => {
+                        const quantity = item.quantityInLiters || item.quantity || 0;
+                        // Find matching stock for this fuel type at this pump to get purchase price
+                        // Since we don't have perfect FIFO mapping here, we use the average or latest purchase price from mappedStocks
+                        const matchingStocks = mappedStocks.filter(st => st.fuelType === item.category && st.location === pumpName);
+                        const purchasePrice = matchingStocks.length > 0 ? matchingStocks[0].purchasePrice : 0;
+                        totalPurchasePrice += purchasePrice * quantity;
+                    });
+
+                    const totalPrice = s.grandTotal || 0;
+                    const totalProfit = totalPrice - totalPurchasePrice;
+
+                    return {
+                        orderId: s.id || (s._id ? s._id.slice(-6).toUpperCase() : "N/A"),
+                        date: s.createdAt || "",
+                        fuelType: s.items?.[0]?.category || "N/A",
+                        quantity: s.items?.reduce((sum: number, item: { quantityInLiters?: number; quantity?: number }) => sum + (item.quantityInLiters || item.quantity || 0), 0) || 0,
+                        totalPrice: totalPrice,
+                        purchasePrice: totalPurchasePrice,
+                        totalProfit: totalProfit,
+                        pump: pumpName,
+                        status: s.status || "Pending",
+                        pumpId: (typeof s.pumpId === 'object' ? s.pumpId?._id : s.pumpId) || "",
+                    };
+                });
 
                 setRawData({
                     sales: mappedSales,
@@ -128,17 +149,19 @@ export default function ReportsMainPage() {
 
     // Filter data based on selected pump and date range
     const getFilteredData = () => {
-        const filterByPumpAndDate = <T extends { date?: string; dateJoined?: string; lastMaintenance?: string; lastUpdated?: string; pumpId?: string; pump?: string; location?: string }>(items: T[]) => {
+        const filterByPumpAndDate = <T extends { date?: string; dateJoined?: string; lastMaintenance?: string; lastUpdated?: string; pumpId?: string; pump?: string; location?: string; status?: string }>(items: T[], isSales: boolean = false) => {
             return items.filter((item) => {
                 const itemDate = new Date(item.date || item.dateJoined || item.lastMaintenance || item.lastUpdated || "");
                 const matchesPump = selectedPump === "all" || item.pumpId === selectedPump || item.pump === selectedPump || item.location === selectedPump;
                 const matchesDate = !fromDate || !toDate || (itemDate >= fromDate && itemDate <= toDate);
-                return matchesPump && matchesDate;
+                const matchesStatus = !isSales || item.status === "Approved";
+
+                return matchesPump && matchesDate && matchesStatus;
             });
         };
 
         return {
-            sales: filterByPumpAndDate(rawData.sales),
+            sales: filterByPumpAndDate(rawData.sales, true),
             employers: selectedPump === "all" ? rawData.employers : rawData.employers.filter((e) => e.pumpId === selectedPump || e.pump === selectedPump),
             pumps: selectedPump === "all" ? rawData.pumps : rawData.pumps.filter((p) => p.pumpId === selectedPump || p.location === selectedPump),
             expenses: filterByPumpAndDate(rawData.expenses),
@@ -153,7 +176,7 @@ export default function ReportsMainPage() {
         const totalRevenue = filteredData.sales.reduce((sum, sale) => sum + sale.totalPrice, 0);
         const totalOrders = filteredData.sales.length;
         const totalExpenses = filteredData.expenses.reduce((sum, expense) => sum + expense.amount, 0);
-        const totalProfit = totalRevenue - totalExpenses;
+        const totalProfit = filteredData.sales.reduce((sum, sale) => sum + sale.totalProfit, 0);
 
         return {
             totalRevenue,
@@ -227,6 +250,21 @@ export default function ReportsMainPage() {
 
                 <Button
                     variant="outline"
+                    onClick={() => {
+                        const todayStart = new Date();
+                        todayStart.setHours(0, 0, 0, 0);
+                        const todayEnd = new Date();
+                        todayEnd.setHours(23, 59, 59, 999);
+                        setFromDate(todayStart);
+                        setToDate(todayEnd);
+                    }}
+                    className="bg-primary/10 hover:bg-primary/20 text-primary border-primary/20"
+                >
+                    Today&apos;s Data
+                </Button>
+
+                <Button
+                    variant="ghost"
                     onClick={() => {
                         setSelectedPump("all");
                         setFromDate(undefined);

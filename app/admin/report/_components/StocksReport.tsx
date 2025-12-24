@@ -24,15 +24,25 @@ export function StocksReport({ stocksData }: StocksReportProps) {
   const averageStockPrice = totalStockItems > 0 ? Math.round(totalStockValue / totalStockItems) : 0;
 
   // Prepare chart data
-  const stockByFuelType = stocksData.map((stock) => ({
-    name: stock.fuelType,
-    quantity: stock.quantity,
-  }));
+  const stockByFuelType = stocksData.reduce((acc: { name: string; quantity: number }[], stock) => {
+    const existing = acc.find((item) => item.name === stock.fuelType);
+    if (existing) {
+      existing.quantity += stock.quantity;
+    } else {
+      acc.push({ name: stock.fuelType, quantity: stock.quantity });
+    }
+    return acc;
+  }, []).map(item => ({ ...item, quantity: Math.round(item.quantity) }));
 
-  const stockDistribution = stocksData.map((stock) => ({
-    name: stock.location,
-    value: stock.quantity,
-  }));
+  const stockDistribution = stocksData.reduce((acc: { name: string; value: number }[], stock) => {
+    const existing = acc.find((item) => item.name === stock.location);
+    if (existing) {
+      existing.value += stock.quantity;
+    } else {
+      acc.push({ name: stock.location, value: stock.quantity });
+    }
+    return acc;
+  }, []).map(item => ({ ...item, value: Math.round(item.value) }));
 
   const generateStocksPDF = () => {
     const formatCurrency = (amount: number) => {
@@ -47,7 +57,7 @@ export function StocksReport({ stocksData }: StocksReportProps) {
       <head>
         <title>Stocks Report</title>
         <meta charset="UTF-8">
-        <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2314b8a6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 3h10v18H4z'/%3E%3Cpath d='M14 7h2a2 2 0 0 1 2 2v7'/%3E%3Cpath d='M9 17h6'/%3E%3C/svg%3E" />
+        <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAyNCAyNCcgZmlsbD0nbm9uZScgc3Ryb2tlPScjMTRiOGE2JyBzdHJva2Utd2lkdGg9JzInIHN0cm9rZS1saW5lY2FwPSdyb3VuZCcgc3Ryb2tlLWxpbmVqb2luPSdyb3VuZCc+PHBhdGggZD0nTTQgM2gxMHYxOEg0eicvPjxwYXRoIGQ9J00xNCA3aDJhMiAyIDAgMCAxIDIgMnY3Jy8+PHBhdGggZD0nTTkgMTdoNicvPjwvc3ZnPg==" />
         <style>
           * { box-sizing: border-box; }
           body { 
@@ -304,13 +314,13 @@ export function StocksReport({ stocksData }: StocksReportProps) {
                   cx="50%"
                   cy="50%"
                   outerRadius={80}
-                  label
+                  label={({ name, value }) => `${name}: ${value.toLocaleString()} L`}
                 >
                   {stockDistribution.map((_: { name: string; value: number }, index: number) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip />
+                <Tooltip formatter={(value: number) => [`${value.toLocaleString()} L`, "Stock"]} />
                 <Legend />
               </PieChart>
             </ResponsiveContainer>

@@ -86,6 +86,7 @@ export default function CheckoutPage() {
     const amountPaidNum = parseFloat(amountPaid) || 0;
     const balance = totalAmount - amountPaidNum;
     const paymentStatus = balance > 0 ? "Partial" : balance < 0 ? "Overpaid" : "Paid";
+    const isCustomerInfoRequired = balance > 0;
 
     const formatQuantityDisplay = (quantity: number, unit: "L" | "mL" | "pcs"): string => {
         if (unit === "L") {
@@ -103,14 +104,22 @@ export default function CheckoutPage() {
     };
 
     const handleCompleteSale = async () => {
-        if (!customerName || !customerPhone) {
-            alert("Customer Name and Phone Number are required.");
-            return;
-        }
+        if (isCustomerInfoRequired) {
+            if (!customerName || !customerPhone) {
+                alert("Customer Name and Phone Number are required for credit sales.");
+                return;
+            }
 
-        if (!isValidPhone(customerPhone)) {
-            alert("Invalid Phone Number. Must start with '03' and be 11 digits long (e.g., 03222222222).");
-            return;
+            if (!isValidPhone(customerPhone)) {
+                alert("Invalid Phone Number. Must start with '03' and be 11 digits long (e.g., 03222222222).");
+                return;
+            }
+        } else {
+            // Even if not required, if user provided a phone, it should be valid
+            if (customerPhone && !isValidPhone(customerPhone)) {
+                alert("Invalid Phone Number. Must start with '03' and be 11 digits long.");
+                return;
+            }
         }
 
         if (!pumpDetails?._id) {
@@ -429,18 +438,22 @@ export default function CheckoutPage() {
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                    <Label htmlFor="customerName">Customer Name <span className="text-red-500">*</span></Label>
+                                    <Label htmlFor="customerName">
+                                        Customer Name {isCustomerInfoRequired && <span className="text-red-500">*</span>}
+                                    </Label>
                                     <Input
                                         id="customerName"
                                         value={customerName}
                                         onChange={(e) => setCustomerName(e.target.value)}
-                                        placeholder="Enter customer name"
+                                        placeholder={isCustomerInfoRequired ? "Required for balance" : "Optional for full payment"}
                                         className="mt-1"
                                     />
                                 </div>
 
                                 <div>
-                                    <Label htmlFor="customerPhone">Phone Number <span className="text-red-500">*</span></Label>
+                                    <Label htmlFor="customerPhone">
+                                        Phone Number {isCustomerInfoRequired && <span className="text-red-500">*</span>}
+                                    </Label>
                                     <Input
                                         id="customerPhone"
                                         value={customerPhone}
@@ -456,6 +469,9 @@ export default function CheckoutPage() {
                                     />
                                     {customerPhone && !isValidPhone(customerPhone) && (
                                         <p className="text-xs text-red-500 mt-1">Must start with 03 and be 11 digits.</p>
+                                    )}
+                                    {isCustomerInfoRequired && !customerPhone && (
+                                        <p className="text-xs text-[#64748b] mt-1">Required to track balance</p>
                                     )}
                                 </div>
                             </div>
@@ -533,7 +549,12 @@ export default function CheckoutPage() {
                         {/* Submit Button */}
                         <Button
                             onClick={handleCompleteSale}
-                            disabled={saleItems.length === 0 || isSubmitting || !customerName || !customerPhone || !isValidPhone(customerPhone)}
+                            disabled={
+                                saleItems.length === 0 ||
+                                isSubmitting ||
+                                (isCustomerInfoRequired && (!customerName || !customerPhone || !isValidPhone(customerPhone))) ||
+                                (customerPhone && !isValidPhone(customerPhone))
+                            }
                             className="w-full bg-[#14b8a6] hover:bg-[#0d9488] text-white h-12 text-lg disabled:opacity-50"
                         >
                             {isSubmitting ? "Processing Sale..." : "Complete Sale & Generate Receipt"}
