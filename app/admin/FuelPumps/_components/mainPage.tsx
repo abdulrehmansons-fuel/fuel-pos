@@ -144,66 +144,68 @@ const FuelPumps = () => {
 
                 {/* Fuel Pump Table */}
                 <Card className="bg-white border rounded-xl shadow-sm overflow-hidden">
-                    <Table>
-                        <TableHeader>
-                            <TableRow className="bg-gray-50">
-                                <TableHead className="text-[#64748b] font-medium">Pump ID</TableHead>
-                                <TableHead className="text-[#64748b] font-medium">Pump Name</TableHead>
-                                <TableHead className="text-[#64748b] font-medium">Location</TableHead>
-                                <TableHead className="text-[#64748b] font-medium">Status</TableHead>
-                                <TableHead className="text-[#64748b] font-medium">Total Nozzles</TableHead>
-                                <TableHead className="text-[#64748b] font-medium text-right">Action</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {loading ? (
-                                <TableRow>
-                                    <TableCell colSpan={6} className="text-center py-10">
-                                        <div className="flex justify-center items-center">
-                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#14b8a6]"></div>
-                                        </div>
-                                    </TableCell>
+                    <div className="overflow-x-auto">
+                        <Table>
+                            <TableHeader>
+                                <TableRow className="bg-gray-50">
+                                    <TableHead className="text-[#64748b] font-medium">Pump ID</TableHead>
+                                    <TableHead className="text-[#64748b] font-medium">Pump Name</TableHead>
+                                    <TableHead className="text-[#64748b] font-medium">Location</TableHead>
+                                    <TableHead className="text-[#64748b] font-medium">Status</TableHead>
+                                    <TableHead className="text-[#64748b] font-medium">Total Nozzles</TableHead>
+                                    <TableHead className="text-[#64748b] font-medium text-right">Action</TableHead>
                                 </TableRow>
-                            ) : filteredPumps.length > 0 ? (
-                                filteredPumps.map((pump) => (
-                                    <TableRow key={pump.id} className="hover:bg-gray-100">
-                                        <TableCell className="font-medium text-[#020617]">{pump.id.slice(-6).toUpperCase()}</TableCell>
-                                        <TableCell className="text-[#020617]">{pump.name}</TableCell>
-                                        <TableCell className="text-[#64748b]">{pump.location}</TableCell>
-                                        <TableCell>
-                                            <Badge
-                                                className={
-                                                    pump.status === "Active"
-                                                        ? "bg-green-100 text-green-700 hover:bg-green-100"
-                                                        : "bg-red-100 text-red-600 hover:bg-red-100"
-                                                }
-                                            >
-                                                {pump.status}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell className="text-[#020617]">{pump.totalNozzles}</TableCell>
-                                        <TableCell className="text-right">
-                                            <Link href={`/admin/FuelPumps/${pump.id}/view`}>
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    className="rounded-md"
-                                                >
-                                                    View
-                                                </Button>
-                                            </Link>
+                            </TableHeader>
+                            <TableBody>
+                                {loading ? (
+                                    <TableRow>
+                                        <TableCell colSpan={6} className="text-center py-10">
+                                            <div className="flex justify-center items-center">
+                                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#14b8a6]"></div>
+                                            </div>
                                         </TableCell>
                                     </TableRow>
-                                ))
-                            ) : (
-                                <TableRow>
-                                    <TableCell colSpan={6} className="text-center py-8 text-[#64748b]">
-                                        No fuel pumps found.
-                                    </TableCell>
-                                </TableRow>
-                            )}
-                        </TableBody>
-                    </Table>
+                                ) : filteredPumps.length > 0 ? (
+                                    filteredPumps.map((pump) => (
+                                        <TableRow key={pump.id} className="hover:bg-gray-100">
+                                            <TableCell className="font-medium text-[#020617]">{pump.id.slice(-6).toUpperCase()}</TableCell>
+                                            <TableCell className="text-[#020617]">{pump.name}</TableCell>
+                                            <TableCell className="text-[#64748b]">{pump.location}</TableCell>
+                                            <TableCell>
+                                                <Badge
+                                                    className={
+                                                        pump.status === "Active"
+                                                            ? "bg-green-100 text-green-700 hover:bg-green-100"
+                                                            : "bg-red-100 text-red-600 hover:bg-red-100"
+                                                    }
+                                                >
+                                                    {pump.status}
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell className="text-[#020617]">{pump.totalNozzles}</TableCell>
+                                            <TableCell className="text-right">
+                                                <Link href={`/admin/FuelPumps/${pump.id}/view`}>
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="rounded-md"
+                                                    >
+                                                        View
+                                                    </Button>
+                                                </Link>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                ) : (
+                                    <TableRow>
+                                        <TableCell colSpan={6} className="text-center py-8 text-[#64748b]">
+                                            No fuel pumps found.
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
                 </Card>
             </div>
         </div>

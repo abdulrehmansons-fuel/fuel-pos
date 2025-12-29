@@ -485,39 +485,41 @@ export default function Dashboard() {
             </Link>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Sale ID</TableHead>
-                  <TableHead>Product</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Time</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {recentSales.map((sale) => (
-                  <TableRow key={sale.id}>
-                    <TableCell className="font-medium">{sale.id}</TableCell>
-                    <TableCell className="text-[#64748b]">{sale.product}</TableCell>
-                    <TableCell className="font-medium">Rs. {sale.amount.toLocaleString()}</TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="secondary"
-                        className={
-                          sale.status === 'approved'
-                            ? 'bg-green-100 text-green-700 hover:bg-green-100'
-                            : 'bg-yellow-100 text-yellow-700 hover:bg-yellow-100'
-                        }
-                      >
-                        {sale.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right text-[#64748b]">{sale.time}</TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Sale ID</TableHead>
+                    <TableHead>Product</TableHead>
+                    <TableHead>Amount</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Time</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {recentSales.map((sale) => (
+                    <TableRow key={sale.id}>
+                      <TableCell className="font-medium">{sale.id}</TableCell>
+                      <TableCell className="text-[#64748b]">{sale.product}</TableCell>
+                      <TableCell className="font-medium">Rs. {sale.amount.toLocaleString()}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="secondary"
+                          className={
+                            sale.status === 'approved'
+                              ? 'bg-green-100 text-green-700 hover:bg-green-100'
+                              : 'bg-yellow-100 text-yellow-700 hover:bg-yellow-100'
+                          }
+                        >
+                          {sale.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right text-[#64748b]">{sale.time}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           </CardContent>
         </Card>
 

@@ -1,8 +1,9 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Bell, Search, User, LogOut, AlertTriangle, Package } from "lucide-react";
+import { Bell, Search, User, LogOut, AlertTriangle, Package, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -24,7 +25,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useAuth } from '@/hooks/use-auth';
+import { AdminSidebar } from "@/components/admin/POSSidebar";
 
 interface StockAlert {
   category: string;
@@ -49,11 +52,13 @@ export const TopBar = ({ title, showUserMenu = false }: TopBarProps) => {
         const stocks = await res.json();
 
         if (Array.isArray(stocks)) {
-          // Aggregate by fuelType
+          // Aggregate by fuelType AND pump
           const aggregation: Record<string, number> = {};
-          stocks.forEach((s: { fuelType?: string; quantity?: string | number }) => {
-            const cat = s.fuelType || "Other";
-            aggregation[cat] = (aggregation[cat] || 0) + (Number(s.quantity) || 0);
+          stocks.forEach((s: { fuelType?: string; quantity?: string | number; pump?: string }) => {
+            const fuel = s.fuelType || "Other";
+            const pump = s.pump || "Main";
+            const key = `${fuel} (${pump})`;
+            aggregation[key] = (aggregation[key] || 0) + (Number(s.quantity) || 0);
           });
 
           // Filter categories below 100L
@@ -80,12 +85,24 @@ export const TopBar = ({ title, showUserMenu = false }: TopBarProps) => {
 
   return (
     <>
-      <header className="flex h-16 items-center justify-between border-b border-border bg-card px-6 shadow-sm">
+      <header className="flex h-16 items-center justify-between border-b border-border bg-card px-3 md:px-6 shadow-sm">
         <div className="flex items-center gap-4">
-          <h2 className="text-xl font-semibold text-foreground">{title}</h2>
+          {/* Mobile Sidebar Toggle */}
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" className="md:hidden">
+                <Menu className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="p-0 w-72">
+              <AdminSidebar />
+            </SheetContent>
+          </Sheet>
+
+          <h2 className="text-lg md:text-xl font-semibold text-foreground">{title}</h2>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 md:gap-4">
           {/* Search */}
           <div className="relative hidden md:block">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -140,7 +157,7 @@ export const TopBar = ({ title, showUserMenu = false }: TopBarProps) => {
                             Low Stock: {alert.category}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            Total volume is only <span className="text-red-600 font-bold">{alert.totalQuantity.toFixed(1)}L</span>. Category combined stock is below the <span className="font-medium">100L</span> threshold.
+                            Total volume is only <span className="text-red-600 font-bold">{alert.totalQuantity.toFixed(1)}L</span>. Stock for this pump is below the <span className="font-medium">100L</span> threshold.
                           </p>
                         </div>
                       </div>
@@ -214,3 +231,4 @@ export const TopBar = ({ title, showUserMenu = false }: TopBarProps) => {
     </>
   );
 };
+

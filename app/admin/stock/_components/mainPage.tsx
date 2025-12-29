@@ -203,7 +203,7 @@ const Stock = () => {
           </Select>
         </div>
 
-        <div className="flex gap-3 w-full sm:w-auto">
+        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
           <Dialog open={isUpdateModalOpen} onOpenChange={setIsUpdateModalOpen}>
             <DialogTrigger asChild>
               <Button className="bg-[#0f172a] hover:bg-[#1e293b] text-white rounded-md px-4 py-2 flex-1 sm:flex-none">
@@ -269,64 +269,66 @@ const Stock = () => {
 
       {/* Stock Table */}
       <Card className="bg-white border shadow-sm rounded-xl overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-gray-50">
-              <TableHead className="text-[#64748b] font-semibold">Fuel Type</TableHead>
-              <TableHead className="text-[#64748b] font-semibold">Pump</TableHead>
-              <TableHead className="text-[#64748b] font-semibold text-right">Qty (L)</TableHead>
-              <TableHead className="text-[#64748b] font-semibold text-right">Purchase (Unit)</TableHead>
-              <TableHead className="text-[#64748b] font-semibold text-right">Sale (Unit)</TableHead>
-              <TableHead className="text-[#64748b] font-semibold text-right text-green-600">Total Purchase</TableHead>
-              <TableHead className="text-[#64748b] font-semibold">Date</TableHead>
-              <TableHead className="text-[#64748b] font-semibold text-center">Action</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={8} className="text-center py-8">
-                  <div className="flex justify-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#14b8a6]"></div>
-                  </div>
-                </TableCell>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-gray-50">
+                <TableHead className="text-[#64748b] font-semibold">Fuel Type</TableHead>
+                <TableHead className="text-[#64748b] font-semibold">Pump</TableHead>
+                <TableHead className="text-[#64748b] font-semibold text-right">Qty (L)</TableHead>
+                <TableHead className="text-[#64748b] font-semibold text-right">Purchase (Unit)</TableHead>
+                <TableHead className="text-[#64748b] font-semibold text-right">Sale (Unit)</TableHead>
+                <TableHead className="text-[#64748b] font-semibold text-right text-green-600">Total Purchase</TableHead>
+                <TableHead className="text-[#64748b] font-semibold">Date</TableHead>
+                <TableHead className="text-[#64748b] font-semibold text-center">Action</TableHead>
               </TableRow>
-            ) : filteredData.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={8} className="text-center py-8 text-[#64748b]">
-                  No stock purchases found.
-                </TableCell>
-              </TableRow>
-            ) : (
-              filteredData.map((item) => (
-                <TableRow key={item._id} className="hover:bg-gray-100 transition-colors">
-                  <TableCell className="font-medium text-[#020617]">{item.fuelType}</TableCell>
-                  <TableCell className="text-[#64748b]">{item.pump}</TableCell>
-                  <TableCell className="text-right">{item.quantity.toLocaleString()}</TableCell>
-                  <TableCell className="text-right">Rs. {item.purchasePricePerLiter}</TableCell>
-                  <TableCell className="text-right font-semibold text-blue-600">Rs. {item.salePricePerLiter}</TableCell>
-                  <TableCell className="text-right font-medium text-green-700">
-                    Rs. {(item.quantity * item.purchasePricePerLiter).toLocaleString()}
-                  </TableCell>
-                  <TableCell className="text-[#64748b]">
-                    {new Date(item.purchaseDate).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => router.push(`/admin/stock/${item._id}/view`)}
-                      className="rounded-md"
-                    >
-                      <Eye className="h-3.5 w-3.5 mr-1" />
-                      View
-                    </Button>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={8} className="text-center py-8">
+                    <div className="flex justify-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#14b8a6]"></div>
+                    </div>
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+              ) : filteredData.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={8} className="text-center py-8 text-[#64748b]">
+                    No stock purchases found.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredData.map((item) => (
+                  <TableRow key={item._id} className="hover:bg-gray-100 transition-colors">
+                    <TableCell className="font-medium text-[#020617]">{item.fuelType}</TableCell>
+                    <TableCell className="text-[#64748b]">{item.pump}</TableCell>
+                    <TableCell className="text-right">{item.quantity.toLocaleString()}</TableCell>
+                    <TableCell className="text-right">Rs. {item.purchasePricePerLiter}</TableCell>
+                    <TableCell className="text-right font-semibold text-blue-600">Rs. {item.salePricePerLiter}</TableCell>
+                    <TableCell className="text-right font-medium text-green-700">
+                      Rs. {(item.quantity * item.purchasePricePerLiter).toLocaleString()}
+                    </TableCell>
+                    <TableCell className="text-[#64748b]">
+                      {new Date(item.purchaseDate).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => router.push(`/admin/stock/${item._id}/view`)}
+                        className="rounded-md"
+                      >
+                        <Eye className="h-3.5 w-3.5 mr-1" />
+                        View
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </Card>
     </div>
   );

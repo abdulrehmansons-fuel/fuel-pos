@@ -205,7 +205,7 @@ export default function CheckoutPage() {
             <div className="min-h-screen bg-[#f1f5f9] p-6">
                 <div className="max-w-3xl mx-auto">
                     {/* Success Message */}
-                    <Card className="p-8 bg-white border shadow-sm rounded-xl text-center mb-6">
+                    <Card className="p-4 sm:p-8 bg-white border shadow-sm rounded-xl text-center mb-6">
                         <div className="flex justify-center mb-4">
                             <div className="bg-green-100 rounded-full p-4">
                                 <CheckCircle className="h-12 w-12 text-green-600" />
@@ -221,18 +221,18 @@ export default function CheckoutPage() {
                             }
                         </p>
 
-                        <div className="flex gap-3 justify-center mb-6">
+                        <div className="flex flex-col sm:flex-row gap-3 justify-center mb-6">
                             <Button
                                 onClick={handlePrintReceipt}
                                 variant="outline"
-                                className="flex items-center gap-2"
+                                className="flex items-center gap-2 w-full sm:w-auto"
                             >
                                 <Printer className="h-4 w-4" />
                                 Print Receipt
                             </Button>
                             <Button
                                 onClick={handleDownloadReceipt}
-                                className="bg-[#14b8a6] hover:bg-[#0d9488] text-white flex items-center gap-2"
+                                className="bg-[#14b8a6] hover:bg-[#0d9488] text-white flex items-center gap-2 w-full sm:w-auto"
                             >
                                 <Download className="h-4 w-4" />
                                 Download Receipt
@@ -342,17 +342,17 @@ export default function CheckoutPage() {
                     </Card>
 
                     {/* Action Buttons */}
-                    <div className="mt-6 flex gap-3">
+                    <div className="mt-6 flex flex-col sm:flex-row gap-3">
                         <Button
                             onClick={() => router.push(`/employer/${pumpId}/${employerId}/createSales`)}
-                            className="flex-1 bg-[#14b8a6] hover:bg-[#0d9488] text-white"
+                            className="flex-1 bg-[#14b8a6] hover:bg-[#0d9488] text-white w-full sm:w-auto"
                         >
                             Create Another Sale
                         </Button>
                         <Button
                             onClick={() => router.push(`/employer/${pumpId}/${employerId}/sales`)}
                             variant="outline"
-                            className="flex-1"
+                            className="flex-1 w-full sm:w-auto"
                         >
                             View My Sales
                         </Button>
@@ -384,7 +384,7 @@ export default function CheckoutPage() {
 
                 <div className="space-y-6">
                     {/* Order Summary */}
-                    <Card className="p-6 bg-white border shadow-sm rounded-xl">
+                    <Card className="p-4 sm:p-6 bg-white border shadow-sm rounded-xl">
                         <h2 className="text-lg font-semibold text-[#020617] mb-4">Order Summary</h2>
 
                         {saleItems.length > 0 ? (
@@ -431,7 +431,7 @@ export default function CheckoutPage() {
                         </div>
                     </Card>
 
-                    <Card className="p-6 bg-white border shadow-sm rounded-xl space-y-6">
+                    <Card className="p-4 sm:p-6 bg-white border shadow-sm rounded-xl space-y-6">
                         {/* Customer Information */}
                         <div className="space-y-4">
                             <h2 className="text-lg font-semibold text-[#020617]">Customer Information</h2>
@@ -555,7 +555,7 @@ export default function CheckoutPage() {
                                 (isCustomerInfoRequired && (!customerName || !customerPhone || !isValidPhone(customerPhone))) ||
                                 (customerPhone && !isValidPhone(customerPhone))
                             }
-                            className="w-full bg-[#14b8a6] hover:bg-[#0d9488] text-white h-12 text-lg disabled:opacity-50"
+                            className="w-full bg-[#14b8a6] hover:bg-[#0d9488] text-white h-auto py-3 text-base sm:text-lg whitespace-normal disabled:opacity-50"
                         >
                             {isSubmitting ? "Processing Sale..." : "Complete Sale & Generate Receipt"}
                         </Button>

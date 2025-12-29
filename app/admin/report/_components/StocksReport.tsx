@@ -338,34 +338,36 @@ export function StocksReport({ stocksData }: StocksReportProps) {
           </Button>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Fuel Type</TableHead>
-                <TableHead>Quantity</TableHead>
-                <TableHead>Price</TableHead>
-                <TableHead>Location</TableHead>
-                <TableHead>Last Updated</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {stocksData.map((stock: StockItem, index: number) => (
-                <TableRow key={index}>
-                  <TableCell className="font-medium">{stock.fuelType}</TableCell>
-                  <TableCell>
-                    <Badge variant={stock.quantity >= 2000 ? "default" : "secondary"}>
-                      {stock.quantity.toLocaleString()} L
-                    </Badge>
-                  </TableCell>
-                  <TableCell>₨ {stock.price.toLocaleString()}/L</TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{stock.location}</Badge>
-                  </TableCell>
-                  <TableCell>{format(new Date(stock.lastUpdated), "MMM dd, yyyy")}</TableCell>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Fuel Type</TableHead>
+                  <TableHead>Quantity</TableHead>
+                  <TableHead>Price</TableHead>
+                  <TableHead>Location</TableHead>
+                  <TableHead>Last Updated</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {stocksData.map((stock: StockItem, index: number) => (
+                  <TableRow key={index}>
+                    <TableCell className="font-medium">{stock.fuelType}</TableCell>
+                    <TableCell>
+                      <Badge variant={stock.quantity >= 2000 ? "default" : "secondary"}>
+                        {stock.quantity.toLocaleString()} L
+                      </Badge>
+                    </TableCell>
+                    <TableCell>₨ {stock.price.toLocaleString()}/L</TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{stock.location}</Badge>
+                    </TableCell>
+                    <TableCell>{format(new Date(stock.lastUpdated), "MMM dd, yyyy")}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
     </div>

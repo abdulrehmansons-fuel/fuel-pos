@@ -386,19 +386,19 @@ const EmployerEdit = ({ employerId }: { employerId: string }) => {
           </div>
 
           {/* Bottom Actions */}
-          <div className="flex justify-end gap-3 mt-6 pt-6 border-t">
+          <div className="flex flex-col sm:flex-row justify-end gap-3 mt-6 pt-6 border-t">
             <Button
               type="button"
               variant="outline"
               onClick={() => router.push("/admin/employers")}
-              className="rounded-md"
+              className="rounded-md w-full sm:w-auto"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={isSubmitting}
-              className="bg-[#14b8a6] hover:bg-[#0d9488] text-white rounded-md px-4 py-2"
+              className="bg-[#14b8a6] hover:bg-[#0d9488] text-white rounded-md px-4 py-2 w-full sm:w-auto"
             >
               {isSubmitting ? (
                 <>

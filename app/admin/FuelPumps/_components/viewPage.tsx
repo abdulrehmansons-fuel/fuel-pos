@@ -102,8 +102,8 @@ const FuelPumpView = ({ pumpId }: { pumpId: string }) => {
     return (
         <div className="p-6 bg-[#f1f5f9] min-h-screen">
             {/* Top Bar */}
-            <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
+            <div className="flex flex-col sm:flex-row items-center justify-between mb-6 gap-4">
+                <div className="flex items-center gap-3 w-full sm:w-auto">
                     <Button
                         variant="outline"
                         onClick={() => router.push("/admin/FuelPumps")}
@@ -114,10 +114,10 @@ const FuelPumpView = ({ pumpId }: { pumpId: string }) => {
                     </Button>
                     <h1 className="text-xl font-semibold text-[#020617]">Fuel Pump Details</h1>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
                     <AlertDialog>
                         <AlertDialogTrigger asChild>
-                            <Button variant="destructive" className="gap-2 rounded-md bg-red-600 hover:bg-red-700 text-white" disabled={isDeleting}>
+                            <Button variant="destructive" className="gap-2 rounded-md bg-red-600 hover:bg-red-700 text-white w-full sm:w-auto" disabled={isDeleting}>
                                 {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash className="h-4 w-4" />}
                                 Delete
                             </Button>
@@ -140,7 +140,7 @@ const FuelPumpView = ({ pumpId }: { pumpId: string }) => {
 
                     <Button
                         onClick={() => router.push(`/admin/FuelPumps/${data.id}/edit`)}
-                        className="bg-[#14b8a6] hover:bg-[#0d9488] text-white rounded-md"
+                        className="bg-[#14b8a6] hover:bg-[#0d9488] text-white rounded-md w-full sm:w-auto"
                     >
                         <Edit className="h-4 w-4 mr-2" />
                         Edit

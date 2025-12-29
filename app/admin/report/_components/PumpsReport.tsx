@@ -344,36 +344,38 @@ export function PumpsReport({ pumpsData, salesData }: PumpsReportProps) {
           </Button>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Pump ID</TableHead>
-                <TableHead>Location</TableHead>
-                <TableHead>Fuel Type</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Profit Generated</TableHead>
-                <TableHead>Total Dispensed</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {pumpMetrics.map((pump: PumpItem, index: number) => (
-                <TableRow key={index}>
-                  <TableCell className="font-medium">{pump.pumpId}</TableCell>
-                  <TableCell>{pump.location}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{pump.fuelType}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={pump.status === "Active" ? "default" : "secondary"}>
-                      {pump.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-success font-semibold">₨ {pump.totalProfit.toLocaleString()}</TableCell>
-                  <TableCell>{pump.totalDispensed.toLocaleString()} L</TableCell>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Pump ID</TableHead>
+                  <TableHead>Location</TableHead>
+                  <TableHead>Fuel Type</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Profit Generated</TableHead>
+                  <TableHead>Total Dispensed</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {pumpMetrics.map((pump: PumpItem, index: number) => (
+                  <TableRow key={index}>
+                    <TableCell className="font-medium">{pump.pumpId}</TableCell>
+                    <TableCell>{pump.location}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{pump.fuelType}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={pump.status === "Active" ? "default" : "secondary"}>
+                        {pump.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-success font-semibold">₨ {pump.totalProfit.toLocaleString()}</TableCell>
+                    <TableCell>{pump.totalDispensed.toLocaleString()} L</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
     </div>

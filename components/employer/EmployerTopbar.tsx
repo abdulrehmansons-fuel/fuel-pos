@@ -62,23 +62,31 @@ export const Topbar = ({
                         <Link href={`/employer/${pumpId}/${employerId}/createSales`}>
                             <Button
                                 variant="ghost"
-                                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activePage === "create"
+                                size="sm"
+                                className={`px-3 py-2 rounded-md transition-colors ${activePage === "create"
                                     ? "bg-primary/10 text-primary"
                                     : "text-foreground hover:bg-muted"
                                     }`}
                             >
-                                Create Sale
+                                <span className="sm:hidden">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-plus-circle"><circle cx="12" cy="12" r="10" /><path d="M8 12h8" /><path d="M12 8v8" /></svg>
+                                </span>
+                                <span className="hidden sm:inline text-sm font-medium">Create Sale</span>
                             </Button>
                         </Link>
                         <Link href={`/employer/${pumpId}/${employerId}/sales`}>
                             <Button
                                 variant="ghost"
-                                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activePage === "sales"
+                                size="sm"
+                                className={`px-3 py-2 rounded-md transition-colors ${activePage === "sales"
                                     ? "bg-primary/10 text-primary"
                                     : "text-foreground hover:bg-muted"
                                     }`}
                             >
-                                My Sales
+                                <span className="sm:hidden">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-list"><path d="M8 6h13" /><path d="M8 12h13" /><path d="M8 18h13" /><path d="M3 6h.01" /><path d="M3 12h.01" /><path d="M3 18h.01" /></svg>
+                                </span>
+                                <span className="hidden sm:inline text-sm font-medium">My Sales</span>
                             </Button>
                         </Link>
                     </nav>

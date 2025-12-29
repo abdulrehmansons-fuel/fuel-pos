@@ -149,83 +149,85 @@ export default function EmployerSalesList() {
 
                 {/* Sales Table */}
                 <Card className="bg-white rounded-xl border shadow-sm overflow-hidden">
-                    <Table>
-                        <TableHeader className="bg-gray-50">
-                            <TableRow>
-                                <TableHead className="font-semibold text-[#020617]">Sale ID</TableHead>
-                                <TableHead className="font-semibold text-[#020617]">Products</TableHead>
-                                <TableHead className="font-semibold text-[#020617] text-center">Quantity (L)</TableHead>
-                                <TableHead className="font-semibold text-[#020617]">Amount (₨)</TableHead>
-                                <TableHead className="font-semibold text-[#020617]">Remaining (₨)</TableHead>
-                                <TableHead className="font-semibold text-[#020617]">Payment</TableHead>
-                                <TableHead className="font-semibold text-[#020617]">Status</TableHead>
-                                <TableHead className="font-semibold text-[#020617]">Sale Date & Time</TableHead>
-                                <TableHead className="font-semibold text-[#020617] text-right">Actions</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {loading ? (
+                    <div className="overflow-x-auto">
+                        <Table>
+                            <TableHeader className="bg-gray-50">
                                 <TableRow>
-                                    <TableCell colSpan={9} className="text-center py-12">
-                                        <div className="flex flex-col items-center justify-center">
-                                            <Spinner className="h-8 w-8 text-[#14b8a6] mb-2" />
-                                            <p className="text-[#64748b]">Loading sales...</p>
-                                        </div>
-                                    </TableCell>
+                                    <TableHead className="font-semibold text-[#020617]">Sale ID</TableHead>
+                                    <TableHead className="font-semibold text-[#020617]">Products</TableHead>
+                                    <TableHead className="font-semibold text-[#020617] text-center">Quantity (L)</TableHead>
+                                    <TableHead className="font-semibold text-[#020617]">Amount (₨)</TableHead>
+                                    <TableHead className="font-semibold text-[#020617]">Remaining (₨)</TableHead>
+                                    <TableHead className="font-semibold text-[#020617]">Payment</TableHead>
+                                    <TableHead className="font-semibold text-[#020617]">Status</TableHead>
+                                    <TableHead className="font-semibold text-[#020617]">Sale Date & Time</TableHead>
+                                    <TableHead className="font-semibold text-[#020617] text-right">Actions</TableHead>
                                 </TableRow>
-                            ) : filteredSales.length === 0 ? (
-                                <TableRow>
-                                    <TableCell colSpan={9} className="text-center py-12">
-                                        <p className="text-[#64748b]">No sales found</p>
-                                    </TableCell>
-                                </TableRow>
-                            ) : (
-                                filteredSales.map((sale) => {
-                                    const totalLiters = sale.items.reduce((sum: number, item: { unit: string; quantity: number }) => {
-                                        const liters = item.unit === "L" ? item.quantity : item.unit === "mL" ? item.quantity / 1000 : 0;
-                                        return sum + liters;
-                                    }, 0);
+                            </TableHeader>
+                            <TableBody>
+                                {loading ? (
+                                    <TableRow>
+                                        <TableCell colSpan={9} className="text-center py-12">
+                                            <div className="flex flex-col items-center justify-center">
+                                                <Spinner className="h-8 w-8 text-[#14b8a6] mb-2" />
+                                                <p className="text-[#64748b]">Loading sales...</p>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                ) : filteredSales.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={9} className="text-center py-12">
+                                            <p className="text-[#64748b]">No sales found</p>
+                                        </TableCell>
+                                    </TableRow>
+                                ) : (
+                                    filteredSales.map((sale) => {
+                                        const totalLiters = sale.items.reduce((sum: number, item: { unit: string; quantity: number }) => {
+                                            const liters = item.unit === "L" ? item.quantity : item.unit === "mL" ? item.quantity / 1000 : 0;
+                                            return sum + liters;
+                                        }, 0);
 
-                                    return (
-                                        <TableRow key={sale._id} className="hover:bg-gray-100">
-                                            <TableCell className="font-medium text-[#020617]">
-                                                SALE-{sale._id?.slice(-6).toUpperCase()}
-                                            </TableCell>
-                                            <TableCell className="text-[#020617] max-w-[200px]">
-                                                {sale.items.map((item: { productName: string }) => item.productName).join(", ")}
-                                            </TableCell>
-                                            <TableCell className="text-center font-medium text-[#020617]">
-                                                {totalLiters.toFixed(2)} L
-                                            </TableCell>
-                                            <TableCell className="text-[#020617] font-medium">
-                                                ₨ {sale.grandTotal.toLocaleString()}
-                                            </TableCell>
-                                            <TableCell className={`font-medium ${sale.grandTotal - sale.amountPaid > 0 ? "text-red-500" : "text-green-600"}`}>
-                                                ₨ {(sale.grandTotal - sale.amountPaid).toLocaleString()}
-                                            </TableCell>
-                                            <TableCell className="text-[#020617]">{sale.paymentMethod}</TableCell>
-                                            <TableCell>{getStatusBadge(sale.status)}</TableCell>
-                                            <TableCell className="text-[#64748b] text-sm">
-                                                {new Date(sale.createdAt).toLocaleString()}
-                                            </TableCell>
-                                            <TableCell>
-                                                <div className="flex items-center justify-end gap-2">
-                                                    <Button
-                                                        size="sm"
-                                                        variant="outline"
-                                                        onClick={() => router.push(`/employer/${pumpId}/${employerId}/sales/${sale._id}/view`)}
-                                                        className="h-8 px-3"
-                                                    >
-                                                        <Eye className="h-4 w-4" />
-                                                    </Button>
-                                                </div>
-                                            </TableCell>
-                                        </TableRow>
-                                    );
-                                })
-                            )}
-                        </TableBody>
-                    </Table>
+                                        return (
+                                            <TableRow key={sale._id} className="hover:bg-gray-100">
+                                                <TableCell className="font-medium text-[#020617]">
+                                                    SALE-{sale._id?.slice(-6).toUpperCase()}
+                                                </TableCell>
+                                                <TableCell className="text-[#020617] max-w-[200px]">
+                                                    {sale.items.map((item: { productName: string }) => item.productName).join(", ")}
+                                                </TableCell>
+                                                <TableCell className="text-center font-medium text-[#020617]">
+                                                    {totalLiters.toFixed(2)} L
+                                                </TableCell>
+                                                <TableCell className="text-[#020617] font-medium">
+                                                    ₨ {sale.grandTotal.toLocaleString()}
+                                                </TableCell>
+                                                <TableCell className={`font-medium ${sale.grandTotal - sale.amountPaid > 0 ? "text-red-500" : "text-green-600"}`}>
+                                                    ₨ {(sale.grandTotal - sale.amountPaid).toLocaleString()}
+                                                </TableCell>
+                                                <TableCell className="text-[#020617]">{sale.paymentMethod}</TableCell>
+                                                <TableCell>{getStatusBadge(sale.status)}</TableCell>
+                                                <TableCell className="text-[#64748b] text-sm">
+                                                    {new Date(sale.createdAt).toLocaleString()}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className="flex items-center justify-end gap-2">
+                                                        <Button
+                                                            size="sm"
+                                                            variant="outline"
+                                                            onClick={() => router.push(`/employer/${pumpId}/${employerId}/sales/${sale._id}/view`)}
+                                                            className="h-8 px-3"
+                                                        >
+                                                            <Eye className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        );
+                                    })
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
                 </Card>
             </div>
         </div>

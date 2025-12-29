@@ -220,22 +220,23 @@ export default function AdminSaleView() {
         <div className="min-h-screen bg-[#f1f5f9]">
             <div className="p-6">
                 {/* Top Bar */}
-                <div className="flex items-center justify-between mb-6">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-6 sm:gap-0">
                     <div className="flex items-center gap-3">
                         <Button
                             variant="outline"
                             onClick={() => router.push("/admin/sales")}
-                            className="gap-2"
+                            className="gap-2 rounded-md"
                         >
                             <ArrowLeft className="h-4 w-4" />
                             Back
                         </Button>
-                        <h1 className="text-2xl font-bold text-[#020617]">Sale Details</h1>
+                        <h1 className="text-xl sm:text-2xl font-bold text-[#020617]">Sale Details</h1>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="grid grid-cols-1 xs:grid-cols-2 sm:flex sm:flex-row items-center gap-3 w-full sm:w-auto">
                         <Button
                             variant="outline"
                             onClick={() => router.push(`/admin/sales/${sale._id}/edit`)}
+                            className="w-full sm:w-auto"
                         >
                             Edit
                         </Button>
@@ -243,7 +244,7 @@ export default function AdminSaleView() {
                             variant="destructive"
                             onClick={() => openConfirmDialog("Delete")}
                             disabled={actionLoading}
-                            className="bg-[#dc2626] hover:bg-red-700 text-white gap-2"
+                            className="bg-[#dc2626] hover:bg-red-700 text-white gap-2 w-full sm:w-auto"
                         >
                             <Trash2 className="h-4 w-4" />
                             Delete
@@ -253,7 +254,7 @@ export default function AdminSaleView() {
                                 <Button
                                     onClick={() => openConfirmDialog("Approve")}
                                     disabled={actionLoading}
-                                    className="bg-[#22c55e] hover:bg-green-600 text-white gap-2"
+                                    className="bg-[#22c55e] hover:bg-green-600 text-white gap-2 w-full sm:w-auto"
                                 >
                                     <Check className="h-4 w-4" />
                                     {actionLoading && confirmAction === "Approve" ? "Approving..." : "Approve"}
@@ -261,7 +262,7 @@ export default function AdminSaleView() {
                                 <Button
                                     onClick={() => openConfirmDialog("Reject")}
                                     disabled={actionLoading}
-                                    className="bg-[#dc2626] hover:bg-red-700 text-white gap-2"
+                                    className="bg-[#dc2626] hover:bg-red-700 text-white gap-2 w-full sm:w-auto"
                                 >
                                     <X className="h-4 w-4" />
                                     {actionLoading && confirmAction === "Reject" ? "Rejecting..." : "Reject"}
@@ -323,26 +324,28 @@ export default function AdminSaleView() {
                         <h2 className="text-sm font-semibold text-[#020617] mb-4 pb-2 border-b border-gray-100">
                             Sold Items
                         </h2>
-                        <Table>
-                            <TableHeader className="bg-gray-50">
-                                <TableRow>
-                                    <TableHead className="font-semibold text-[#020617]">Product</TableHead>
-                                    <TableHead className="font-semibold text-[#020617] text-center">Quantity</TableHead>
-                                    <TableHead className="font-semibold text-[#020617] text-right">Rate</TableHead>
-                                    <TableHead className="font-semibold text-[#020617] text-right">Total</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {sale.items.map((item, index) => (
-                                    <TableRow key={index}>
-                                        <TableCell className="font-medium">{item.productName}</TableCell>
-                                        <TableCell className="text-center">{item.quantity} {item.unit}</TableCell>
-                                        <TableCell className="text-right">₨ {item.rate.toLocaleString()}</TableCell>
-                                        <TableCell className="text-right font-semibold">₨ {item.total.toLocaleString()}</TableCell>
+                        <div className="overflow-x-auto">
+                            <Table>
+                                <TableHeader className="bg-gray-50">
+                                    <TableRow>
+                                        <TableHead className="font-semibold text-[#020617]">Product</TableHead>
+                                        <TableHead className="font-semibold text-[#020617] text-center">Quantity</TableHead>
+                                        <TableHead className="font-semibold text-[#020617] text-right">Rate</TableHead>
+                                        <TableHead className="font-semibold text-[#020617] text-right">Total</TableHead>
                                     </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
+                                </TableHeader>
+                                <TableBody>
+                                    {sale.items.map((item, index) => (
+                                        <TableRow key={index}>
+                                            <TableCell className="font-medium">{item.productName}</TableCell>
+                                            <TableCell className="text-center">{item.quantity} {item.unit}</TableCell>
+                                            <TableCell className="text-right">₨ {item.rate.toLocaleString()}</TableCell>
+                                            <TableCell className="text-right font-semibold">₨ {item.total.toLocaleString()}</TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
                     </div>
 
                     {/* Bill Summary */}

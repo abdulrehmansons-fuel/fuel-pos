@@ -105,8 +105,8 @@ const StockView = ({ id }: { id: string }) => {
   return (
     <div className="p-6 bg-[#f1f5f9] min-h-screen">
       {/* Top Bar */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col sm:flex-row items-center justify-between mb-6 gap-4 sm:gap-0">
+        <div className="flex items-center gap-4 w-full sm:w-auto">
           <Button
             variant="outline"
             size="sm"
@@ -116,14 +116,14 @@ const StockView = ({ id }: { id: string }) => {
             <ArrowLeft className="h-4 w-4" />
             Back
           </Button>
-          <h1 className="text-xl font-semibold text-[#020617]">
+          <h1 className="text-xl sm:text-2xl font-semibold text-[#020617]">
             Stock Purchase Details
           </h1>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto mt-2 sm:mt-0">
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="destructive" className="gap-2 rounded-md">
+              <Button variant="destructive" className="gap-2 rounded-md w-full sm:w-auto">
                 <Trash2 className="h-4 w-4" />
                 Delete
               </Button>
@@ -145,7 +145,7 @@ const StockView = ({ id }: { id: string }) => {
           </AlertDialog>
           <Button
             onClick={() => router.push(`/admin/stock/${data._id}/edit`)}
-            className="bg-[#14b8a6] hover:bg-[#0d9488] text-white rounded-md px-4 py-2 gap-2"
+            className="bg-[#14b8a6] hover:bg-[#0d9488] text-white rounded-md px-4 py-2 gap-2 w-full sm:w-auto"
           >
             <Edit className="h-4 w-4" />
             Edit

@@ -139,8 +139,8 @@ const Expenses = () => {
       </div>
 
       {/* Search + Filters + Add Button */}
-      <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
-        <div className="flex items-center gap-3 flex-wrap">
+      <div className="flex flex-col sm:flex-row items-center justify-between mb-4 gap-3 flex-wrap">
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto flex-wrap">
           <div className="relative w-full sm:w-80">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-[#64748b]" />
             <Input
@@ -152,7 +152,7 @@ const Expenses = () => {
           </div>
 
           <Select value={selectedType} onValueChange={setSelectedType}>
-            <SelectTrigger className="w-[180px] rounded-md">
+            <SelectTrigger className="w-full sm:w-[180px] rounded-md">
               <SelectValue placeholder="Expense Type" />
             </SelectTrigger>
             <SelectContent>
@@ -164,7 +164,7 @@ const Expenses = () => {
           </Select>
 
           <Select value={selectedPump} onValueChange={setSelectedPump}>
-            <SelectTrigger className="w-[160px] rounded-md">
+            <SelectTrigger className="w-full sm:w-[160px] rounded-md">
               <SelectValue placeholder="Pump / Shop" />
             </SelectTrigger>
             <SelectContent>

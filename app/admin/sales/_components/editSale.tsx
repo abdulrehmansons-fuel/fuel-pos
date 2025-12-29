@@ -155,7 +155,7 @@ export default function AdminEditSale() {
                     <Card className="md:col-span-2 p-6 bg-white border shadow-sm rounded-xl">
                         <h2 className="text-lg font-semibold text-[#020617] mb-4">Sale Summary</h2>
 
-                        <div className="mb-6">
+                        <div className="mb-6 overflow-x-auto">
                             <Table>
                                 <TableHeader>
                                     <TableRow className="bg-gray-50">

@@ -11,7 +11,9 @@ interface AdminLayoutProps {
 export const AdminLayout = ({ children }: AdminLayoutProps) => {
   return (
     <div className="flex h-screen w-full overflow-hidden bg-background">
-      <AdminSidebar />
+      <div className="hidden md:block">
+        <AdminSidebar />
+      </div>
       <div className="flex flex-1 flex-col overflow-hidden">
         <TopBar title="Admin Dashboard" showUserMenu />
         <main className="flex-1 overflow-y-auto p-6">

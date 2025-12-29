@@ -221,98 +221,100 @@ const Sales = () => {
 
                 {/* Sales Table */}
                 <Card className="bg-white rounded-xl border shadow-sm overflow-hidden">
-                    <Table>
-                        <TableHeader className="bg-gray-50">
-                            <TableRow>
-                                <TableHead className="font-semibold text-[#020617]">Sale ID</TableHead>
-                                <TableHead className="font-semibold text-[#020617]">Products</TableHead>
-                                <TableHead className="font-semibold text-[#020617]">Pump</TableHead>
-                                <TableHead className="font-semibold text-[#020617]">Employer</TableHead>
-                                <TableHead className="font-semibold text-[#020617]">Amount (₨)</TableHead>
-                                <TableHead className="font-semibold text-[#020617]">Remaining (₨)</TableHead>
-                                <TableHead className="font-semibold text-[#020617]">Payment</TableHead>
-                                <TableHead className="font-semibold text-[#020617]">Status</TableHead>
-                                <TableHead className="font-semibold text-[#020617]">Sale Date & Time</TableHead>
-                                <TableHead className="font-semibold text-[#020617] text-right">Actions</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {loading ? (
+                    <div className="overflow-x-auto">
+                        <Table>
+                            <TableHeader className="bg-gray-50">
                                 <TableRow>
-                                    <TableCell colSpan={10} className="text-center py-12">
-                                        <div className="flex flex-col items-center justify-center">
-                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#14b8a6] mb-2"></div>
-                                            <p className="text-[#64748b]">Loading sales...</p>
-                                        </div>
-                                    </TableCell>
+                                    <TableHead className="font-semibold text-[#020617]">Sale ID</TableHead>
+                                    <TableHead className="font-semibold text-[#020617]">Products</TableHead>
+                                    <TableHead className="font-semibold text-[#020617]">Pump</TableHead>
+                                    <TableHead className="font-semibold text-[#020617]">Employer</TableHead>
+                                    <TableHead className="font-semibold text-[#020617]">Amount (₨)</TableHead>
+                                    <TableHead className="font-semibold text-[#020617]">Remaining (₨)</TableHead>
+                                    <TableHead className="font-semibold text-[#020617]">Payment</TableHead>
+                                    <TableHead className="font-semibold text-[#020617]">Status</TableHead>
+                                    <TableHead className="font-semibold text-[#020617]">Sale Date & Time</TableHead>
+                                    <TableHead className="font-semibold text-[#020617] text-right">Actions</TableHead>
                                 </TableRow>
-                            ) : filteredSales.length === 0 ? (
-                                <TableRow>
-                                    <TableCell colSpan={10} className="text-center py-12">
-                                        <p className="text-[#64748b]">No sales found</p>
-                                    </TableCell>
-                                </TableRow>
-                            ) : (
-                                filteredSales.map((sale) => (
-                                    <TableRow key={sale._id} className="hover:bg-gray-100">
-                                        <TableCell className="font-medium text-[#020617]">
-                                            SALE-{sale._id?.slice(-6).toUpperCase()}
-                                        </TableCell>
-                                        <TableCell className="text-[#020617] max-w-[200px] truncate">
-                                            {sale.items.map((item: { productName: string }) => item.productName).join(", ")}
-                                        </TableCell>
-                                        <TableCell className="text-[#020617]">
-                                            {typeof sale.pumpId === 'object' && sale.pumpId?.pumpName ? sale.pumpId.pumpName : 'N/A'}
-                                        </TableCell>
-                                        <TableCell className="text-[#020617]">
-                                            {typeof sale.employerId === 'object' && sale.employerId?.fullName ? sale.employerId.fullName : 'N/A'}
-                                        </TableCell>
-                                        <TableCell className="text-[#020617] font-medium">
-                                            ₨ {sale.grandTotal.toLocaleString()}
-                                        </TableCell>
-                                        <TableCell className={`font-medium ${sale.grandTotal - sale.amountPaid > 0 ? "text-red-500" : "text-green-600"}`}>
-                                            ₨ {(sale.grandTotal - sale.amountPaid).toLocaleString()}
-                                        </TableCell>
-                                        <TableCell className="text-[#020617]">{sale.paymentMethod}</TableCell>
-                                        <TableCell>{getStatusBadge(sale.status)}</TableCell>
-                                        <TableCell className="text-[#64748b] text-sm">
-                                            {new Date(sale.createdAt).toLocaleString()}
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="flex items-center justify-end gap-2">
-                                                {sale.status === "Pending" && (
-                                                    <>
-                                                        <Button
-                                                            size="sm"
-                                                            onClick={() => openConfirmDialog("Approve", sale._id)}
-                                                            className="bg-[#22c55e] hover:bg-green-600 text-white h-8 px-3"
-                                                        >
-                                                            <Check className="h-4 w-4" />
-                                                        </Button>
-                                                        <Button
-                                                            size="sm"
-                                                            onClick={() => openConfirmDialog("Reject", sale._id)}
-                                                            className="bg-[#dc2626] hover:bg-red-700 text-white h-8 px-3"
-                                                        >
-                                                            <X className="h-4 w-4" />
-                                                        </Button>
-                                                    </>
-                                                )}
-                                                <Button
-                                                    size="sm"
-                                                    variant="outline"
-                                                    onClick={() => router.push(`/admin/sales/${sale._id}/view`)}
-                                                    className="h-8 px-3"
-                                                >
-                                                    <Eye className="h-4 w-4" />
-                                                </Button>
+                            </TableHeader>
+                            <TableBody>
+                                {loading ? (
+                                    <TableRow>
+                                        <TableCell colSpan={10} className="text-center py-12">
+                                            <div className="flex flex-col items-center justify-center">
+                                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#14b8a6] mb-2"></div>
+                                                <p className="text-[#64748b]">Loading sales...</p>
                                             </div>
                                         </TableCell>
                                     </TableRow>
-                                ))
-                            )}
-                        </TableBody>
-                    </Table>
+                                ) : filteredSales.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={10} className="text-center py-12">
+                                            <p className="text-[#64748b]">No sales found</p>
+                                        </TableCell>
+                                    </TableRow>
+                                ) : (
+                                    filteredSales.map((sale) => (
+                                        <TableRow key={sale._id} className="hover:bg-gray-100">
+                                            <TableCell className="font-medium text-[#020617]">
+                                                SALE-{sale._id?.slice(-6).toUpperCase()}
+                                            </TableCell>
+                                            <TableCell className="text-[#020617] max-w-[200px] truncate">
+                                                {sale.items.map((item: { productName: string }) => item.productName).join(", ")}
+                                            </TableCell>
+                                            <TableCell className="text-[#020617]">
+                                                {typeof sale.pumpId === 'object' && sale.pumpId?.pumpName ? sale.pumpId.pumpName : 'N/A'}
+                                            </TableCell>
+                                            <TableCell className="text-[#020617]">
+                                                {typeof sale.employerId === 'object' && sale.employerId?.fullName ? sale.employerId.fullName : 'N/A'}
+                                            </TableCell>
+                                            <TableCell className="text-[#020617] font-medium">
+                                                ₨ {sale.grandTotal.toLocaleString()}
+                                            </TableCell>
+                                            <TableCell className={`font-medium ${sale.grandTotal - sale.amountPaid > 0 ? "text-red-500" : "text-green-600"}`}>
+                                                ₨ {(sale.grandTotal - sale.amountPaid).toLocaleString()}
+                                            </TableCell>
+                                            <TableCell className="text-[#020617]">{sale.paymentMethod}</TableCell>
+                                            <TableCell>{getStatusBadge(sale.status)}</TableCell>
+                                            <TableCell className="text-[#64748b] text-sm">
+                                                {new Date(sale.createdAt).toLocaleString()}
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="flex items-center justify-end gap-2">
+                                                    {sale.status === "Pending" && (
+                                                        <>
+                                                            <Button
+                                                                size="sm"
+                                                                onClick={() => openConfirmDialog("Approve", sale._id)}
+                                                                className="bg-[#22c55e] hover:bg-green-600 text-white h-8 px-3"
+                                                            >
+                                                                <Check className="h-4 w-4" />
+                                                            </Button>
+                                                            <Button
+                                                                size="sm"
+                                                                onClick={() => openConfirmDialog("Reject", sale._id)}
+                                                                className="bg-[#dc2626] hover:bg-red-700 text-white h-8 px-3"
+                                                            >
+                                                                <X className="h-4 w-4" />
+                                                            </Button>
+                                                        </>
+                                                    )}
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        onClick={() => router.push(`/admin/sales/${sale._id}/view`)}
+                                                        className="h-8 px-3"
+                                                    >
+                                                        <Eye className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
                 </Card>
             </div>
 
