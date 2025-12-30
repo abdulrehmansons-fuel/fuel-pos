@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -81,7 +81,8 @@ const FuelPumpEdit = ({ pumpId }: { pumpId: string }) => {
 
     const totalNozzles = watch("totalNozzles");
     const selectedFuelTypes = watch("selectedFuelTypes");
-    const nozzles = watch("nozzles") || [];
+    const watchedNozzles = watch("nozzles");
+    const nozzles = useMemo(() => watchedNozzles || [], [watchedNozzles]);
 
     // Update nozzles array when totalNozzles changes
     useEffect(() => {

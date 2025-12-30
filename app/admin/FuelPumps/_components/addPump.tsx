@@ -19,7 +19,7 @@ import { toast } from "sonner";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { fuelPumpAddSchema, type FuelPumpAddFormData, PUMP_STATUS, FUEL_TYPE_OPTIONS } from "@/validators/fuelpump";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 
 const AddFuelPump = () => {
     const router = useRouter();
@@ -46,7 +46,8 @@ const AddFuelPump = () => {
 
     const totalNozzles = watch("totalNozzles");
     const selectedFuelTypes = watch("selectedFuelTypes");
-    const nozzles = watch("nozzles") || [];
+    const watchedNozzles = watch("nozzles");
+    const nozzles = useMemo(() => watchedNozzles || [], [watchedNozzles]);
 
     // Update nozzles array when totalNozzles changes
     useEffect(() => {
