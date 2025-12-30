@@ -38,6 +38,12 @@ export const fuelPumpAddSchema = z.object({
 
     selectedEmployees: z.array(z.string()).optional(),
 
+    nozzles: z.array(z.object({
+        name: z.string().min(1, 'Nozzle name is required'),
+        fuelType: z.string().min(1, 'Fuel type is required'),
+        openingReading: z.preprocess((val) => Number(val), z.number().min(0, 'Opening reading must be at least 0')).default(0),
+    })).optional(),
+
     notes: z.string().optional(),
 });
 

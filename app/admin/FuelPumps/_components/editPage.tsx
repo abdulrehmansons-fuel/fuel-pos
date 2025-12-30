@@ -30,6 +30,8 @@ const FuelPumpEdit = ({ pumpId }: { pumpId: string }) => {
         handleSubmit,
         control,
         reset,
+        watch,
+        setValue,
         formState: { errors, isSubmitting },
     } = useForm<FuelPumpEditFormData>({
         resolver: zodResolver(fuelPumpEditSchema),
@@ -39,7 +41,8 @@ const FuelPumpEdit = ({ pumpId }: { pumpId: string }) => {
             status: undefined,
             totalNozzles: "",
             selectedFuelTypes: [],
-            selectedEmployees: [], // default
+            selectedEmployees: [],
+            nozzles: [],
             notes: "",
         },
     });
@@ -61,7 +64,8 @@ const FuelPumpEdit = ({ pumpId }: { pumpId: string }) => {
                     status: pump.status,
                     totalNozzles: String(pump.totalNozzles),
                     selectedFuelTypes: pump.fuelProducts || [],
-                    selectedEmployees: pump.assignedEmployees || [], // Keep value if it exists but no UI
+                    selectedEmployees: pump.assignedEmployees || [],
+                    nozzles: pump.nozzles || [],
                     notes: pump.notes || "",
                 });
             } catch (error) {
@@ -74,6 +78,23 @@ const FuelPumpEdit = ({ pumpId }: { pumpId: string }) => {
 
         if (pumpId) fetchData();
     }, [pumpId, reset]);
+
+    const totalNozzles = watch("totalNozzles");
+    const selectedFuelTypes = watch("selectedFuelTypes");
+    const nozzles = watch("nozzles") || [];
+
+    // Update nozzles array when totalNozzles changes
+    useEffect(() => {
+        const count = Number(totalNozzles) || 0;
+        if (count > 0 && count !== nozzles.length) {
+            const newNozzles = Array.from({ length: count }, (_, i) => ({
+                name: nozzles[i]?.name || `Nozzle ${i + 1}`,
+                fuelType: nozzles[i]?.fuelType || "",
+                openingReading: nozzles[i]?.openingReading || 0,
+            }));
+            setValue("nozzles", newNozzles);
+        }
+    }, [totalNozzles, setValue]);
 
     const onSubmit = async (formData: FuelPumpEditFormData) => {
         try {
@@ -240,6 +261,84 @@ const FuelPumpEdit = ({ pumpId }: { pumpId: string }) => {
                             />
                         </div>
                     </div>
+
+                    {/* Section 2.5: Nozzle Configuration */}
+                    {Number(totalNozzles) > 0 && (
+                        <div className="mt-6">
+                            <h2 className="text-sm font-medium text-[#64748b] uppercase tracking-wide mb-4">
+                                Nozzle Configuration
+                            </h2>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {nozzles.map((_, index) => (
+                                    <div key={index} className="p-4 border rounded-lg bg-gray-50 space-y-3">
+                                        <h3 className="text-sm font-semibold text-[#020617]">Nozzle {index + 1}</h3>
+                                        <div className="space-y-2">
+                                            <Label htmlFor={`nozzle-name-${index}`} className="text-[#020617]">
+                                                Nozzle Name
+                                            </Label>
+                                            <Input
+                                                id={`nozzle-name-${index}`}
+                                                placeholder={`Nozzle ${index + 1}`}
+                                                className="bg-white border rounded-md"
+                                                value={nozzles[index]?.name || ""}
+                                                onChange={(e) => {
+                                                    const updated = [...nozzles];
+                                                    updated[index] = { ...updated[index], name: e.target.value };
+                                                    setValue("nozzles", updated);
+                                                }}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor={`nozzle-fuel-${index}`} className="text-[#020617]">
+                                                Fuel Type <span className="text-red-500">*</span>
+                                            </Label>
+                                            <Select
+                                                value={nozzles[index]?.fuelType || ""}
+                                                onValueChange={(value) => {
+                                                    const updated = [...nozzles];
+                                                    updated[index] = { ...updated[index], fuelType: value };
+                                                    setValue("nozzles", updated);
+                                                }}
+                                            >
+                                                <SelectTrigger className="bg-white border rounded-md">
+                                                    <SelectValue placeholder="Select fuel type" />
+                                                </SelectTrigger>
+                                                <SelectContent className="bg-white border rounded-md shadow-lg z-50">
+                                                    {selectedFuelTypes && selectedFuelTypes.length > 0 ? (
+                                                        selectedFuelTypes.map((fuel) => (
+                                                            <SelectItem key={fuel} value={fuel}>
+                                                                {fuel.replace('-', ' ')}
+                                                            </SelectItem>
+                                                        ))
+                                                    ) : (
+                                                        <div className="p-2 text-sm text-gray-500">Please select fuel types first</div>
+                                                    )}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor={`nozzle-reading-${index}`} className="text-[#020617]">
+                                                Opening Reading (Liters)
+                                            </Label>
+                                            <Input
+                                                id={`nozzle-reading-${index}`}
+                                                type="number"
+                                                placeholder="0.00"
+                                                step="0.01"
+                                                className="bg-white border rounded-md"
+                                                value={nozzles[index]?.openingReading || ""}
+                                                onChange={(e) => {
+                                                    const updated = [...nozzles];
+                                                    updated[index] = { ...updated[index], openingReading: Number(e.target.value) };
+                                                    setValue("nozzles", updated, { shouldDirty: true });
+                                                }}
+                                            />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
 
                     {/* Section 3: Notes */}
                     <div className="mt-6">

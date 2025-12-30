@@ -13,6 +13,7 @@ const saleItemSchema = z.object({
     quantityInLiters: z.number().optional(),
     rate: z.number().min(0),
     total: z.number().min(0),
+    nozzleId: z.string().optional(),
 });
 
 const createSaleSchema = z.object({

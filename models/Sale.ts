@@ -8,6 +8,7 @@ export interface ISaleItem {
     quantityInLiters?: number;
     rate: number;
     total: number;
+    nozzleId?: string;
 }
 
 export interface IPaymentHistoryEntry {
@@ -45,6 +46,7 @@ const SaleItemSchema = new Schema<ISaleItem>({
     quantityInLiters: { type: Number },
     rate: { type: Number, required: true },
     total: { type: Number, required: true },
+    nozzleId: { type: String },
 }, { _id: false });
 
 const PaymentHistorySchema = new Schema<IPaymentHistoryEntry>({

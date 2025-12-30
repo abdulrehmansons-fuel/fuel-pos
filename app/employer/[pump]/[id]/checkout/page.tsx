@@ -42,6 +42,7 @@ export default function CheckoutPage() {
     // Get sale data from localStorage
     const [saleItems, setSaleItems] = useState<SaleItem[]>([]);
     const [totalAmount, setTotalAmount] = useState(0);
+    const [nozzleId, setNozzleId] = useState("");
 
     useEffect(() => {
         const pendingSale = localStorage.getItem('pendingSale');
@@ -49,6 +50,7 @@ export default function CheckoutPage() {
             const saleData = JSON.parse(pendingSale);
             setSaleItems(saleData.items || []);
             setTotalAmount(saleData.grandTotal || 0);
+            setNozzleId(saleData.nozzleId || "");
         } else {
             // Fallback to URL param
             setTotalAmount(parseFloat(searchParams?.get("total") || "0"));
@@ -134,7 +136,10 @@ export default function CheckoutPage() {
             const payload = {
                 employerId,
                 pumpId: pumpDetails._id, // Use resolved ObjectId
-                items: saleItems,
+                items: saleItems.map(item => ({
+                    ...item,
+                    nozzleId: nozzleId || undefined,
+                })),
                 subtotal: totalAmount, // Assuming no tax/add-ons for simplified flow
                 tax: 0,
                 grandTotal: totalAmount,

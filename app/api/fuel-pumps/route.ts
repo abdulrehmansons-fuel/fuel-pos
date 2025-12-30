@@ -57,15 +57,17 @@ export async function POST(req: NextRequest) {
         }
 
         // 3. Create Pump
-        const newPump = await FuelPump.create({
+        const pumpData = {
             pumpName: data.pumpName,
             location: data.location,
             status: data.status,
             totalNozzles: Number(data.totalNozzles),
             fuelProducts: data.selectedFuelTypes || [],
+            nozzles: data.nozzles || [],
             assignedEmployees: data.selectedEmployees || [],
             notes: data.notes
-        });
+        };
+        const newPump = await FuelPump.create(pumpData);
 
         return NextResponse.json(
             {

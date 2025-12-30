@@ -36,6 +36,15 @@ interface Product {
     totalQuantity: number;
 }
 
+interface Nozzle {
+    name: string;
+    fuelType: string;
+}
+
+interface PumpData {
+    nozzles?: Nozzle[];
+}
+
 
 
 export default function CreateSale() {
@@ -45,15 +54,29 @@ export default function CreateSale() {
     const employerId = params?.id as string;
 
     const [products, setProducts] = useState<Product[]>([]);
+    const [pumpData, setPumpData] = useState<PumpData | null>(null);
 
     useEffect(() => {
-        const fetchStocks = async () => {
+        const fetchData = async () => {
             if (pumpId) {
                 const fetchedProducts = await getPumpStocks(pumpId);
                 setProducts(fetchedProducts);
+
+                // Fetch pump details for nozzles
+                try {
+                    const pumpRes = await fetch(`/api/fuel-pumps/${pumpId}`);
+                    if (pumpRes.ok) {
+                        const pump = await pumpRes.json();
+                        console.log('Pump data loaded:', pump);
+                        console.log('Nozzles:', pump.nozzles);
+                        setPumpData(pump);
+                    }
+                } catch (error) {
+                    console.error("Error fetching pump data:", error);
+                }
             }
         };
-        fetchStocks();
+        fetchData();
     }, [pumpId]);
 
     const [currentItem, setCurrentItem] = useState({
@@ -63,7 +86,38 @@ export default function CreateSale() {
         quantity: 0,
         unit: "L" as "L" | "mL" | "pcs",
         rate: 0,
+        nozzleId: "",
     });
+
+    const handleNozzleSelect = (nozzleId: string) => {
+        const nozzle = pumpData?.nozzles?.find(n => n.name === nozzleId);
+        if (nozzle) {
+            const product = products.find(p => p.category === nozzle.fuelType);
+            if (product) {
+                setCurrentItem({
+                    ...currentItem,
+                    nozzleId: nozzleId,
+                    productName: product.name,
+                    category: product.category,
+                    rate: product.rate,
+                    unit: product.defaultUnit,
+                    totalAmount: 0,
+                    quantity: 0,
+                });
+            } else {
+                setCurrentItem({
+                    ...currentItem,
+                    nozzleId: nozzleId,
+                    productName: "",
+                    category: nozzle.fuelType,
+                    rate: 0,
+                    unit: "L",
+                    totalAmount: 0,
+                    quantity: 0,
+                });
+            }
+        }
+    };
 
     const handleProductSelect = (productName: string) => {
         const product = products.find((p) => p.name === productName);
@@ -163,11 +217,13 @@ export default function CreateSale() {
             total: currentItem.totalAmount,
         };
 
+        // Add nozzleId to localStorage for checkout
         const saleData = {
             items: [singleItem],
             subtotal,
             tax,
             grandTotal,
+            nozzleId: currentItem.nozzleId,
         };
 
         localStorage.setItem('pendingSale', JSON.stringify(saleData));
@@ -196,6 +252,28 @@ export default function CreateSale() {
                             </h2>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {/* Nozzle Selection */}
+                                {pumpData?.nozzles && pumpData.nozzles.length > 0 && (
+                                    <div className="md:col-span-2">
+                                        <Label htmlFor="nozzle">Select Nozzle</Label>
+                                        <Select
+                                            value={currentItem.nozzleId}
+                                            onValueChange={handleNozzleSelect}
+                                        >
+                                            <SelectTrigger className="mt-1">
+                                                <SelectValue placeholder="Select nozzle" />
+                                            </SelectTrigger>
+                                            <SelectContent className="bg-white max-h-60">
+                                                {pumpData.nozzles.map((nozzle) => (
+                                                    <SelectItem key={nozzle.name} value={nozzle.name}>
+                                                        {nozzle.name} - {nozzle.fuelType}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                )}
+
                                 <div className="md:col-span-2">
                                     <Label htmlFor="product">Product / Fuel Type</Label>
                                     <Select

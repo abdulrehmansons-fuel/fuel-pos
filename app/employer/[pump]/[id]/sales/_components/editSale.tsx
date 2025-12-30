@@ -19,6 +19,7 @@ interface SaleItem {
     unit: string;
     rate: number;
     total: number;
+    nozzleId?: string;
 }
 
 interface Sale {
@@ -166,6 +167,7 @@ export default function EmployerEditSale() {
                                 <TableHeader>
                                     <TableRow className="bg-gray-50">
                                         <TableHead>Product</TableHead>
+                                        <TableHead className="text-center">Nozzle</TableHead>
                                         <TableHead className="text-right">Total</TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -178,11 +180,14 @@ export default function EmployerEditSale() {
                                                     {item.quantity} {item.unit} x ₨{item.rate}
                                                 </div>
                                             </TableCell>
+                                            <TableCell className="text-center text-[#020617]">
+                                                {item.nozzleId || "—"}
+                                            </TableCell>
                                             <TableCell className="text-right">₨ {item.total.toLocaleString()}</TableCell>
                                         </TableRow>
                                     ))}
                                     <TableRow className="font-bold border-t-2">
-                                        <TableCell>Total Amount</TableCell>
+                                        <TableCell colSpan={2}>Total Amount</TableCell>
                                         <TableCell className="text-right text-[#020617]">₨ {sale.grandTotal.toLocaleString()}</TableCell>
                                     </TableRow>
                                 </TableBody>

@@ -7,6 +7,11 @@ export interface IFuelPump extends Document {
     status: 'active' | 'inactive';
     totalNozzles: number;
     fuelProducts: string[];
+    nozzles: {
+        name: string;
+        fuelType: string;
+        openingReading: number;
+    }[];
     assignedEmployees: string[]; // Storing employee IDs or Names
     notes?: string;
     createdAt: Date;
@@ -41,6 +46,11 @@ const FuelPumpSchema: Schema = new Schema({
         type: [String],
         default: []
     },
+    nozzles: [{
+        name: { type: String, required: true },
+        fuelType: { type: String, required: true },
+        openingReading: { type: Number, default: 0 }
+    }],
     // We can store Employee Strings. 
     // If strict relation is needed we would use Schema.Types.ObjectId ref 'User'.
     // Given current validator just takes strings, we'll store strings for now.

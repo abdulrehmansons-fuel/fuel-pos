@@ -31,6 +31,7 @@ interface SaleItem {
     unit: string;
     rate: number;
     total: number;
+    nozzleId?: string;
 }
 
 interface PaymentLog {
@@ -329,6 +330,7 @@ export default function AdminSaleView() {
                                 <TableHeader className="bg-gray-50">
                                     <TableRow>
                                         <TableHead className="font-semibold text-[#020617]">Product</TableHead>
+                                        <TableHead className="font-semibold text-[#020617] text-center">Nozzle</TableHead>
                                         <TableHead className="font-semibold text-[#020617] text-center">Quantity</TableHead>
                                         <TableHead className="font-semibold text-[#020617] text-right">Rate</TableHead>
                                         <TableHead className="font-semibold text-[#020617] text-right">Total</TableHead>
@@ -338,6 +340,7 @@ export default function AdminSaleView() {
                                     {sale.items.map((item, index) => (
                                         <TableRow key={index}>
                                             <TableCell className="font-medium">{item.productName}</TableCell>
+                                            <TableCell className="text-center">{item.nozzleId || "—"}</TableCell>
                                             <TableCell className="text-center">{item.quantity} {item.unit}</TableCell>
                                             <TableCell className="text-right">₨ {item.rate.toLocaleString()}</TableCell>
                                             <TableCell className="text-right font-semibold">₨ {item.total.toLocaleString()}</TableCell>

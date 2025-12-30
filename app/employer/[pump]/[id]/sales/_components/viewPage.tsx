@@ -14,6 +14,7 @@ interface SaleItem {
     unit: string;
     rate: number;
     total: number;
+    nozzleId?: string;
 }
 
 interface PaymentLog {
@@ -193,6 +194,7 @@ export default function EmployerSaleView() {
                             <TableHeader>
                                 <TableRow className="bg-gray-50">
                                     <TableHead className="text-[#64748b]">Product / Fuel Type</TableHead>
+                                    <TableHead className="text-center text-[#64748b]">Nozzle</TableHead>
                                     <TableHead className="text-center text-[#64748b]">Quantity</TableHead>
                                     <TableHead className="text-center text-[#64748b]">Rate (₨)</TableHead>
                                     <TableHead className="text-right text-[#64748b]">Total (₨)</TableHead>
@@ -206,6 +208,9 @@ export default function EmployerSaleView() {
                                                 <p className="font-medium text-[#020617]">{item.productName}</p>
                                                 <p className="text-xs text-[#64748b]">{item.category}</p>
                                             </div>
+                                        </TableCell>
+                                        <TableCell className="text-center text-[#020617]">
+                                            {item.nozzleId || "—"}
                                         </TableCell>
                                         <TableCell className="text-center text-[#020617]">
                                             {item.quantity} {item.unit}

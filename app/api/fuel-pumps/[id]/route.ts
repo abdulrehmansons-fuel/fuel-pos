@@ -14,7 +14,19 @@ export async function GET(req: NextRequest, { params }: Props) {
         await connectDB();
         const { id } = await params;
 
-        const pump = await FuelPump.findById(id);
+        const mongoose = (await import("mongoose")).default;
+        let pump;
+
+        // 1. Try fetching by ID if it's a valid ObjectId
+        if (mongoose.Types.ObjectId.isValid(id)) {
+            pump = await FuelPump.findById(id);
+        }
+
+        // 2. If not found by ID or ID is actually a Name, try fetching by Name
+        if (!pump) {
+            const decodedName = decodeURIComponent(id);
+            pump = await FuelPump.findOne({ pumpName: decodedName });
+        }
 
         if (!pump) {
             return NextResponse.json(
@@ -77,6 +89,7 @@ export async function PUT(req: NextRequest, { params }: Props) {
                 status: data.status,
                 totalNozzles: Number(data.totalNozzles),
                 fuelProducts: data.selectedFuelTypes || [],
+                nozzles: data.nozzles || [],
                 assignedEmployees: data.selectedEmployees || [],
                 notes: data.notes
             },

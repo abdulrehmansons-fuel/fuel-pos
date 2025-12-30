@@ -25,44 +25,109 @@ type FuelPumpData = {
     status: "Active" | "Inactive";
     totalNozzles: number;
     fuelTypes: string[];
+    nozzles: {
+        name: string;
+        fuelType: string;
+        openingReading: number;
+    }[];
     assignedEmployees: string[];
     notes: string;
+};
+
+type NozzlePerformance = {
+    name: string;
+    fuelType: string;
+    tillYesterday: number;
+    todaySale: number;
+    total: number;
 };
 
 const FuelPumpView = ({ pumpId }: { pumpId: string }) => {
     const router = useRouter();
     const [data, setData] = useState<FuelPumpData | null>(null);
+    const [performance, setPerformance] = useState<NozzlePerformance[]>([]);
     const [loading, setLoading] = useState(true);
     const [isDeleting, setIsDeleting] = useState(false);
 
     useEffect(() => {
-        const fetchPump = async () => {
+        const fetchPumpAndSales = async () => {
             try {
-                const res = await fetch(`/api/fuel-pumps/${pumpId}`);
-                if (res.ok) {
-                    const pump = await res.json();
-                    setData({
-                        id: pump._id,
-                        name: pump.pumpName,
-                        location: pump.location || "—",
-                        status: pump.status === "active" ? "Active" : "Inactive",
-                        totalNozzles: pump.totalNozzles,
-                        fuelTypes: pump.fuelProducts || [],
-                        assignedEmployees: pump.assignedEmployees || [],
-                        notes: pump.notes || ""
-                    });
-                } else {
+                // 1. Fetch Pump Details
+                const pumpRes = await fetch(`/api/fuel-pumps/${pumpId}`);
+                if (!pumpRes.ok) {
                     toast.error("Failed to fetch pump details");
                     router.push("/admin/FuelPumps");
+                    return;
+                }
+                const pump = await pumpRes.json();
+
+                const pumpData: FuelPumpData = {
+                    id: pump._id,
+                    name: pump.pumpName,
+                    location: pump.location || "—",
+                    status: pump.status === "active" ? "Active" : "Inactive",
+                    totalNozzles: pump.totalNozzles,
+                    fuelTypes: pump.fuelProducts || [],
+                    nozzles: pump.nozzles || [],
+                    assignedEmployees: pump.assignedEmployees || [],
+                    notes: pump.notes || ""
+                };
+                setData(pumpData);
+
+                // 2. Fetch Approved Sales for this pump
+                const salesRes = await fetch(`/api/sales?pumpId=${pumpId}&status=Approved`);
+                if (salesRes.ok) {
+                    const sales = await salesRes.json();
+                    calculatePerformance(pumpData.nozzles, sales);
                 }
             } catch (error) {
-                console.error("Error fetching pump:", error);
+                console.error("Error fetching pump or sales:", error);
                 toast.error("An unexpected error occurred");
             } finally {
                 setLoading(false);
             }
         };
-        if (pumpId) fetchPump();
+
+        const calculatePerformance = (nozzles: FuelPumpData["nozzles"], sales: any[]) => {
+            const today = new Date();
+            const todayStr = today.toISOString().split('T')[0]; // YYYY-MM-DD
+
+            const perf = nozzles.map(nozzle => {
+                let tillYesterdaySales = 0;
+                let todaySales = 0;
+
+                sales.forEach(sale => {
+                    const saleDate = new Date(sale.createdAt);
+                    const saleDateStr = saleDate.toISOString().split('T')[0];
+
+                    sale.items.forEach((item: any) => {
+                        // Match nozzle name or ID
+                        if (item.nozzleId === nozzle.name) {
+                            const qty = item.quantityInLiters || item.quantity || 0;
+                            if (saleDateStr < todayStr) {
+                                tillYesterdaySales += qty;
+                            } else if (saleDateStr === todayStr) {
+                                todaySales += qty;
+                            } else {
+                                // For future sales (if any), count as today for now or ignore
+                                todaySales += qty;
+                            }
+                        }
+                    });
+                });
+
+                return {
+                    name: nozzle.name,
+                    fuelType: nozzle.fuelType,
+                    tillYesterday: nozzle.openingReading + tillYesterdaySales,
+                    todaySale: todaySales,
+                    total: nozzle.openingReading + tillYesterdaySales + todaySales
+                };
+            });
+            setPerformance(perf);
+        };
+
+        if (pumpId) fetchPumpAndSales();
     }, [pumpId, router]);
 
     const handleDelete = async () => {
@@ -188,7 +253,7 @@ const FuelPumpView = ({ pumpId }: { pumpId: string }) => {
                     <h2 className="text-sm font-medium text-[#64748b] uppercase tracking-wide mb-4 border-b pb-2">
                         Operational Data
                     </h2>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                         <div>
                             <p className="text-xs uppercase text-[#64748b] mb-1">Total Nozzles</p>
                             <p className="text-base font-semibold text-[#020617]">{data.totalNozzles}</p>
@@ -208,6 +273,39 @@ const FuelPumpView = ({ pumpId }: { pumpId: string }) => {
                         </div>
                     </div>
                 </div>
+
+                {/* Section 2.5: Nozzle Performance Logs */}
+                {performance.length > 0 && (
+                    <div>
+                        <h2 className="text-sm font-medium text-[#64748b] uppercase tracking-wide mb-4 border-b pb-2">
+                            Nozzle Performance Logs (Liters)
+                        </h2>
+                        <div className="overflow-x-auto border rounded-xl">
+                            <table className="w-full text-left text-sm">
+                                <thead className="bg-gray-50 border-b">
+                                    <tr>
+                                        <th className="px-4 py-3 font-semibold text-[#020617]">Nozzle</th>
+                                        <th className="px-4 py-3 font-semibold text-[#020617]">Fuel Type</th>
+                                        <th className="px-4 py-3 font-semibold text-[#020617]">Till Yesterday</th>
+                                        <th className="px-4 py-3 font-semibold text-[#020617]">Today's Sale</th>
+                                        <th className="px-4 py-3 font-semibold text-[#020617]">Total Sale</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y">
+                                    {performance.map((perf, idx) => (
+                                        <tr key={idx} className="hover:bg-gray-50 transition-colors">
+                                            <td className="px-4 py-3 font-medium text-[#020617]">{perf.name}</td>
+                                            <td className="px-4 py-3 text-[#64748b]">{perf.fuelType}</td>
+                                            <td className="px-4 py-3 text-[#020617] font-medium">{perf.tillYesterday.toLocaleString()} L</td>
+                                            <td className="px-4 py-3 text-[#14b8a6] font-semibold">{perf.todaySale.toLocaleString()} L</td>
+                                            <td className="px-4 py-3 text-[#020617] font-bold bg-[#f8fafc]">{perf.total.toLocaleString()} L</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
 
                 {/* Section 3: Notes */}
                 <div>
