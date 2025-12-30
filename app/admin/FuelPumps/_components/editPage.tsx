@@ -94,7 +94,7 @@ const FuelPumpEdit = ({ pumpId }: { pumpId: string }) => {
             }));
             setValue("nozzles", newNozzles);
         }
-    }, [totalNozzles, setValue]);
+    }, [totalNozzles, setValue, nozzles]);
 
     const onSubmit = async (formData: FuelPumpEditFormData) => {
         try {

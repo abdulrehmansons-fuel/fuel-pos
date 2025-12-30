@@ -59,7 +59,7 @@ const AddFuelPump = () => {
             }));
             setValue("nozzles", newNozzles);
         }
-    }, [totalNozzles, setValue]);
+    }, [totalNozzles, setValue, nozzles]);
 
     const onSubmit = async (data: FuelPumpAddFormData) => {
         try {

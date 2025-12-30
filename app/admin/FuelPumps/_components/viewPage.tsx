@@ -88,7 +88,18 @@ const FuelPumpView = ({ pumpId }: { pumpId: string }) => {
             }
         };
 
-        const calculatePerformance = (nozzles: FuelPumpData["nozzles"], sales: any[]) => {
+        interface SaleItem {
+            nozzleId?: string;
+            quantityInLiters?: number;
+            quantity?: number;
+        }
+
+        interface Sale {
+            createdAt: string;
+            items: SaleItem[];
+        }
+
+        const calculatePerformance = (nozzles: FuelPumpData["nozzles"], sales: Sale[]) => {
             const today = new Date();
             const todayStr = today.toISOString().split('T')[0]; // YYYY-MM-DD
 
@@ -100,7 +111,7 @@ const FuelPumpView = ({ pumpId }: { pumpId: string }) => {
                     const saleDate = new Date(sale.createdAt);
                     const saleDateStr = saleDate.toISOString().split('T')[0];
 
-                    sale.items.forEach((item: any) => {
+                    sale.items.forEach((item: SaleItem) => {
                         // Match nozzle name or ID
                         if (item.nozzleId === nozzle.name) {
                             const qty = item.quantityInLiters || item.quantity || 0;
@@ -287,7 +298,7 @@ const FuelPumpView = ({ pumpId }: { pumpId: string }) => {
                                         <th className="px-4 py-3 font-semibold text-[#020617]">Nozzle</th>
                                         <th className="px-4 py-3 font-semibold text-[#020617]">Fuel Type</th>
                                         <th className="px-4 py-3 font-semibold text-[#020617]">Till Yesterday</th>
-                                        <th className="px-4 py-3 font-semibold text-[#020617]">Today's Sale</th>
+                                        <th className="px-4 py-3 font-semibold text-[#020617]">Today&apos;s Sale</th>
                                         <th className="px-4 py-3 font-semibold text-[#020617]">Total Sale</th>
                                     </tr>
                                 </thead>
