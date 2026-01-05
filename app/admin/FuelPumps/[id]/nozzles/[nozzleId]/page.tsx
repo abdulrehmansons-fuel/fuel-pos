@@ -18,13 +18,11 @@ export default async function Page({ params }: PageProps) {
 
     // Get Nozzle Name for display
     const nozzles = await getNozzles(id);
-    const currentNozzle = nozzles.find((n: any) => n._id === nozzleId);
+    const currentNozzle = nozzles.find((n: { _id: string; name: string }) => n._id === nozzleId);
     const nozzleName = currentNozzle ? currentNozzle.name : "Unknown Nozzle";
 
     return (
         <NozzleCreditsList
-            pumpId={id}
-            nozzleId={nozzleId}
             customers={customers}
             nozzleName={nozzleName}
         />

@@ -79,9 +79,9 @@ export default function AddBulkSales({ pumpId, employerId, nozzles }: AddBulkSal
             setSoldQuantity("");
             setCreditSales([]);
             toast.success("Daily Sale Recorded Successfully!");
-        } catch (error: any) {
+        } catch (error) {
             console.error(error);
-            toast.error(error.message || "Failed to record sale");
+            toast.error(error instanceof Error ? error.message : "Failed to record sale");
         } finally {
             setLoading(false);
         }
@@ -121,7 +121,7 @@ export default function AddBulkSales({ pumpId, employerId, nozzles }: AddBulkSal
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                 <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Today's Total Sale (Liters)</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Today&apos;s Total Sale (Liters)</label>
                     <input
                         type="number"
                         placeholder="e.g. 1000"
@@ -239,8 +239,8 @@ export default function AddBulkSales({ pumpId, employerId, nozzles }: AddBulkSal
                 onClick={handleSubmit}
                 disabled={loading || !selectedNozzleId}
                 className={`w-full py-4 rounded-lg text-white font-bold text-lg shadow-md transition-all ${loading
-                        ? "bg-slate-400 cursor-not-allowed"
-                        : "bg-teal-600 hover:bg-teal-700 hover:shadow-lg active:transform active:scale-[0.99]"
+                    ? "bg-slate-400 cursor-not-allowed"
+                    : "bg-teal-600 hover:bg-teal-700 hover:shadow-lg active:transform active:scale-[0.99]"
                     }`}
             >
                 {loading ? (

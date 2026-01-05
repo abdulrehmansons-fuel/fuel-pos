@@ -3,7 +3,7 @@
 import connectDB from "@/lib/db";
 import Sale from "@/models/Sale";
 import Customer from "@/models/Customer";
-import mongoose from "mongoose";
+
 
 interface CustomerData {
     _id: string;

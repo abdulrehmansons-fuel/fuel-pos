@@ -2,7 +2,6 @@
 
 import connectDB from "@/lib/db";
 import Customer from "@/models/Customer";
-import Sale from "@/models/Sale";
 import { revalidatePath } from "next/cache";
 
 export async function getCustomers() {
@@ -18,7 +17,7 @@ export async function getCustomerById(id: string) {
     return JSON.parse(JSON.stringify(customer));
 }
 
-export async function updateCustomerBalance(customerId: string, amountPaid: number, notes?: string) {
+export async function updateCustomerBalance(customerId: string, amountPaid: number) {
     await connectDB();
     const customer = await Customer.findById(customerId);
     if (!customer) throw new Error("Customer not found");

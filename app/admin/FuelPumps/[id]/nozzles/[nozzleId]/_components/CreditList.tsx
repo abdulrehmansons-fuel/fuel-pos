@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,14 +20,9 @@ interface Customer {
     balance: number;
 }
 
-interface CreditPageProps {
-    pumpId: string;
-    nozzleId: string;
-    customers: Customer[];
-    nozzleName: string;
-}
 
-export default function NozzleCreditsList({ pumpId, nozzleId, customers, nozzleName }: CreditPageProps) {
+
+export default function NozzleCreditsList({ customers, nozzleName }: { customers: Customer[]; nozzleName: string }) {
     const router = useRouter();
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editValue, setEditValue] = useState<string>("");

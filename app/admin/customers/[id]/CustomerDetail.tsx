@@ -7,7 +7,12 @@ import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface PageProps {
-    customer: any;
+    customer: {
+        _id: string;
+        name: string;
+        phone: string;
+        balance: number;
+    };
 }
 
 export default function CustomerView({ customer }: PageProps) {
@@ -25,8 +30,8 @@ export default function CustomerView({ customer }: PageProps) {
             alert("Payment recorded!");
             router.refresh(); // Refresh server data
             setAmount("");
-        } catch (error: any) {
-            alert(error.message);
+        } catch (error) {
+            alert(error instanceof Error ? error.message : "An error occurred");
         } finally {
             setLoading(false);
         }

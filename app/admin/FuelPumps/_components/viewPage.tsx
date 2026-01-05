@@ -26,6 +26,7 @@ type FuelPumpData = {
     totalNozzles: number;
     fuelTypes: string[];
     nozzles: {
+        _id?: string;
         name: string;
         fuelType: string;
         openingReading: number;
@@ -129,7 +130,7 @@ const FuelPumpView = ({ pumpId }: { pumpId: string }) => {
                 });
 
                 return {
-                    id: (nozzle as any)._id || "",
+                    id: nozzle._id || "",
                     name: nozzle.name,
                     fuelType: nozzle.fuelType,
                     tillYesterday: nozzle.openingReading + tillYesterdaySales,

@@ -1,9 +1,9 @@
 
-import { getCustomers, deleteCustomer } from "@/app/actions/customers";
+import { getCustomers } from "@/app/actions/customers";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { revalidatePath } from "next/cache";
+
 
 export default async function CustomersPage() {
     const customers = await getCustomers();
@@ -24,7 +24,7 @@ export default async function CustomersPage() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {customers.map((customer: any, index: number) => (
+                        {customers.map((customer: { _id: string; name: string; phone: string; balance: number; updatedAt: string }, index: number) => (
                             <TableRow key={customer._id}>
                                 <TableCell>{index + 1}</TableCell>
                                 <TableCell className="font-medium">{customer.name}</TableCell>
