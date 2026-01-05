@@ -18,9 +18,11 @@ export const EmployeeLayout = ({ children }: EmployeeLayoutProps) => {
   const employerId = params?.id as string || "emp1";
 
   // Determine active page based on pathname
-  const activePage = pathname?.includes('/createSales') || pathname?.includes('/create') || pathname?.includes('/checkout')
-    ? 'create' as const
-    : 'sales' as const;
+  const activePage = pathname?.includes('/nozzles')
+    ? 'nozzles' as const
+    : pathname?.includes('/createSales') || pathname?.includes('/create') || pathname?.includes('/checkout')
+      ? 'create' as const
+      : 'sales' as const;
 
   // State for dynamic data
   const [pumpName, setPumpName] = useState("Loading...");

@@ -8,6 +8,8 @@ export interface ISaleItem {
     quantityInLiters?: number;
     rate: number;
     total: number;
+    purchaseRate?: number;
+    purchaseTotal?: number;
     nozzleId?: string;
 }
 
@@ -23,6 +25,7 @@ export interface IPaymentHistoryEntry {
 export interface ISale extends Document {
     employerId: mongoose.Types.ObjectId;
     pumpId: mongoose.Types.ObjectId;
+    customerId?: mongoose.Types.ObjectId; // Optional: Link to Customer if credit sale
     items: ISaleItem[];
     subtotal: number;
     tax: number;
@@ -46,6 +49,8 @@ const SaleItemSchema = new Schema<ISaleItem>({
     quantityInLiters: { type: Number },
     rate: { type: Number, required: true },
     total: { type: Number, required: true },
+    purchaseRate: { type: Number, default: 0 }, // Cost Price Per Liter
+    purchaseTotal: { type: Number, default: 0 }, // Total Cost Price
     nozzleId: { type: String },
 }, { _id: false });
 
@@ -62,6 +67,7 @@ const SaleSchema = new Schema<ISale>(
     {
         employerId: { type: Schema.Types.ObjectId, ref: "User", required: true },
         pumpId: { type: Schema.Types.ObjectId, ref: "FuelPump", required: true },
+        customerId: { type: Schema.Types.ObjectId, ref: "Customer" },
         items: { type: [SaleItemSchema], required: true },
         subtotal: { type: Number, required: true },
         tax: { type: Number, default: 0 },

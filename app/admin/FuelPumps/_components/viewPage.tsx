@@ -35,6 +35,7 @@ type FuelPumpData = {
 };
 
 type NozzlePerformance = {
+    id: string;
     name: string;
     fuelType: string;
     tillYesterday: number;
@@ -128,6 +129,7 @@ const FuelPumpView = ({ pumpId }: { pumpId: string }) => {
                 });
 
                 return {
+                    id: (nozzle as any)._id || "",
                     name: nozzle.name,
                     fuelType: nozzle.fuelType,
                     tillYesterday: nozzle.openingReading + tillYesterdaySales,
@@ -300,6 +302,7 @@ const FuelPumpView = ({ pumpId }: { pumpId: string }) => {
                                         <th className="px-4 py-3 font-semibold text-[#020617]">Till Yesterday</th>
                                         <th className="px-4 py-3 font-semibold text-[#020617]">Today&apos;s Sale</th>
                                         <th className="px-4 py-3 font-semibold text-[#020617]">Total Sale</th>
+                                        <th className="px-4 py-3 font-semibold text-[#020617]">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y">
@@ -310,6 +313,15 @@ const FuelPumpView = ({ pumpId }: { pumpId: string }) => {
                                             <td className="px-4 py-3 text-[#020617] font-medium">{perf.tillYesterday.toLocaleString()} L</td>
                                             <td className="px-4 py-3 text-[#14b8a6] font-semibold">{perf.todaySale.toLocaleString()} L</td>
                                             <td className="px-4 py-3 text-[#020617] font-bold bg-[#f8fafc]">{perf.total.toLocaleString()} L</td>
+                                            <td className="px-4 py-3">
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => router.push(`/admin/FuelPumps/${pumpId}/nozzles/${perf.id}`)}
+                                                >
+                                                    View Credits
+                                                </Button>
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>

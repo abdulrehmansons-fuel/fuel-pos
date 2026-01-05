@@ -3,7 +3,7 @@ import { z } from 'zod';
 // Employer status options
 export const EMPLOYER_STATUS = ['Active', 'Inactive'] as const;
 
-// Fuel pump options
+
 export const FUEL_PUMPS = ['Fuel Pump A', 'Fuel Pump B', 'Fuel Pump C'] as const;
 
 // Base employer schema for add form (all fields required)

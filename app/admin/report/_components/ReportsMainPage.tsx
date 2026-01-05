@@ -93,18 +93,28 @@ export default function ReportsMainPage() {
                 }));
 
                 // Map Sales
-                const mappedSales = (Array.isArray(sales) ? sales : []).map((s: { id?: string; _id?: string; createdAt?: string; items?: { category?: string; quantityInLiters?: number; quantity?: number; rate?: number }[]; grandTotal?: number; pumpId?: { pumpName?: string; _id?: string } | string; status?: string }) => {
+                const mappedSales = (Array.isArray(sales) ? sales : []).map((s: { id?: string; _id?: string; createdAt?: string; items?: { category?: string; quantityInLiters?: number; quantity?: number; rate?: number; purchaseRate?: number; purchaseTotal?: number }[]; grandTotal?: number; pumpId?: { pumpName?: string; _id?: string } | string; status?: string }) => {
                     const pumpName = (typeof s.pumpId === 'object' ? s.pumpId?.pumpName : s.pumpId) || "N/A";
 
-                    // Approximate purchase price and profit
+                    // Calculate purchase price and profit
                     let totalPurchasePrice = 0;
                     s.items?.forEach(item => {
                         const quantity = item.quantityInLiters || item.quantity || 0;
-                        // Find matching stock for this fuel type at this pump to get purchase price
-                        // Since we don't have perfect FIFO mapping here, we use the average or latest purchase price from mappedStocks
-                        const matchingStocks = mappedStocks.filter(st => st.fuelType === item.category && st.location === pumpName);
-                        const purchasePrice = matchingStocks.length > 0 ? matchingStocks[0].purchasePrice : 0;
-                        totalPurchasePrice += purchasePrice * quantity;
+
+                        // Priority 1: Use stored total cost from Sale record (The most accurate, FIFO-based)
+                        if (item.purchaseTotal !== undefined && item.purchaseTotal > 0) {
+                            totalPurchasePrice += item.purchaseTotal;
+                        }
+                        // Priority 2: Use stored rate * quantity
+                        else if (item.purchaseRate !== undefined && item.purchaseRate > 0) {
+                            totalPurchasePrice += item.purchaseRate * quantity;
+                        }
+                        // Priority 3: Fallback for old records (Estimate based on current stock price)
+                        else {
+                            const matchingStocks = mappedStocks.filter(st => st.fuelType === item.category && st.location === pumpName);
+                            const purchasePrice = matchingStocks.length > 0 ? matchingStocks[0].purchasePrice : 0;
+                            totalPurchasePrice += purchasePrice * quantity;
+                        }
                     });
 
                     const totalPrice = s.grandTotal || 0;
