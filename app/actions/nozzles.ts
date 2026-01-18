@@ -2,7 +2,7 @@
 
 import connectDB from "@/lib/db";
 import FuelPump from "@/models/FuelPump";
-import Sale from "@/models/Sale";
+import Sale, { ISale, ISaleItem, IPaymentHistoryEntry } from "@/models/Sale";
 import Stock from "@/models/Stock";
 import Customer from "@/models/Customer";
 import { revalidatePath } from "next/cache";
@@ -100,7 +100,7 @@ export async function submitDailySale(
     pumpId: string,
     employerId: string,
     nozzleId: string,
-    soldQuantity: number,
+    closingReading: number,
     creditSales: CreditSale[]
 ) {
     await connectDB();
@@ -110,14 +110,14 @@ export async function submitDailySale(
     const nozzle = pump.nozzles.id(nozzleId);
     if (!nozzle) throw new Error("Nozzle not found");
 
-    if (soldQuantity <= 0) {
-        throw new Error("Sold quantity must be greater than zero");
-    }
-
     const openingReading = nozzle.openingReading;
-    const closingReading = openingReading + soldQuantity;
-    // We no longer calculate soldQuantity from closingReading.
-    // We calculate closingReading from soldQuantity.
+
+    // Calculate sold quantity from closing reading - opening reading
+    const soldQuantity = closingReading - openingReading;
+
+    if (soldQuantity <= 0) {
+        throw new Error("Closing reading must be greater than opening reading");
+    }
 
     // Get Stock Price for this Fuel Type
     // We assume the latest stock entry determines the price, or we should have a Price configuration.
@@ -136,75 +136,9 @@ export async function submitDailySale(
     const cashAmount = totalAmount - creditTotal;
 
     if (cashAmount < 0) {
-        // This implies credits exceed total sales? Possible if they are paying off old debts?
-        // But here we are recording *sales*.
-        // If "Remaining Balances" means "Paying for today's fuel later", then Credit Total <= Total Amount.
-        // Only if they are paying *extra*, but the prompt says "remaining balances of any users... paid like you can see checkout".
-        // Actually "remaining balances" usually means what they *didn't* pay?
-        // "enter customer name, phone num and how many amount he paid" -> Wait.
-        // "add multiple data for remaining balances... amount he paid".
-        // If he *paid*, that's cash in hand?
-        // "track remaining balances".
-        // Re-reading: "add any remaining balances of customers then it will proper track remaining balances"
-        // Usually this means "Credit Sale" i.e. Customer took fuel but didn't pay.
-        // So "Amount He Paid" ?? Maybe "Amount He OWES"?
-        // Or "Amount He Paid" means "Partial Payment"?
-        // Prompt: "enter customer name, phone num and how many amount he paid like you can see this functionality in checkout page"
-        // Checkout page usually tracks what they *paid*.
-        // If I sell 1000 worth.
-        // Customer A takes 500 worth, pays 0. (Balance 500).
-        // Customer B takes 500 worth, pays 200. (Balance 300).
-        // Cash in hand = 200.
-        // Total Sale = 1000.
-        // The user prompt is slightly ambiguous: "how many amount he paid".
-        // If I enter "Amount He Paid", how do I know the "Total Amount He Bought"? 
-        // Ah, maybe the user means "Amount He Bought on Credit"?
-        // "add any remaining balances... track remaining balances".
-        // If I enter "Amount Paid", I don't know the generated debt unless I know the individual sale amount.
-        // BUT, we are doing *Nozzle* sales. 100 people came.
-        // We know Total Sales = 1000 Liters = 100,000 RS.
-        // We don't know individual breakdown per customer generally.
-        // BUT we want to record "Credit Customers".
-        // So we say: "Out of this 100,000 RS, Ali took 5000 RS worth and didn't pay".
-        // So we record "Ali: 5000 Debt".
-        // So the field likely means "Amount of Credit" or "Amount to add to Balance".
 
-        // user phrase: "how many amount he paid".
-        // This is confusing. If he paid, why add to remaining balance?
-        // Maybe "Amount he *is to pay*" (i.e. Credit)?
-        // "remaining balances of any users ... track remaining balances".
-        // I will assume this list represents **CREDIT SALES** (money *not* received).
-        // So "amount" in `creditSales` array = Amount to be added to user's debt.
     }
 
-    // 1. Create Main Sale Record (Cash + Credits aggregated?)
-    // Actually, distinct records are better for tracking.
-    // "dont add whole sales separatey and will directly tell total fuel saled"
-    // So one big record for the nozzle logic?
-
-    // Let's create one SALE record for the day/nozzle.
-    // Payment Method: "Cash" (mostly).
-    // And if there are credits, we might need separate records or a way to link them?
-    // If we create one big Sale, we can't easily tag "Ali" to 500 RS of it.
-    // UNLESS we just create simple "Debt" records for Ali?
-    // But `Sale` model has `paymentStatus`.
-
-    // Strategy:
-    // Create one Sale for the *Cash* portion.
-    // Create separate Sales for each *Credit* customer.
-    // Sum of (Cash Sale + Credit Sales) MUST = Total Nozzle Sale?
-    // Not necessarily. The "Credit Sales" might be just a subset.
-    // What about the "Cash" customers? We don't track them individually.
-    // So:
-    // Total Expected = soldQuantity * rate.
-    // Credit Total = Sum(creditSales.amount).
-    // Cash Total = Total Expected - Credit Total.
-
-    // So I will create:
-    // 1. Sale (Cash): Amount = Cash Total. Items = { product: Fuel, quantity: (CashTotal/Rate) }.
-    // 2. Sales (Credit): For each credit customer. Amount = creditSale.amount. Items = { quantity: creditSale.amount/rate }.
-    //    These will have `paymentStatus = "Partial"` (or "Unpaid" if supported, but enum has "Paid", "Partial", "Overpaid").
-    //    Actually "Partial" with `amountPaid: 0` is effectively Unpaid.
 
     // 1. Stock Deduction with Cost Calculation
     let remainingToDeduct = soldQuantity;
@@ -217,11 +151,6 @@ export async function submitDailySale(
         if (remainingToDeduct <= 0) break;
 
         const deduct = Math.min(stock.quantity, remainingToDeduct);
-
-        // Accumulate Cost
-        // purchasePricePerLiter might be undefined for old records, default to 0 or salePrice?
-        // Ideally should be 0 so profit shows up as reduced (or full profit if cost unknown).
-        // Let's assume 0 if missing.
         const stockCost = Number(stock.purchasePricePerLiter) || 0;
         totalCost += (deduct * stockCost);
 
@@ -233,7 +162,8 @@ export async function submitDailySale(
     // Calculate Average Cost Rate for this sale
     const averagePurchaseRate = totalCost / soldQuantity;
 
-    // 2. Process Credit Sales
+    // 2. Process Credit Sales - Update Customer Balances
+    const creditCustomers = [];
     for (const credit of creditSales) {
         // Find or Create Customer
         let customer = await Customer.findOne({ phone: credit.phone });
@@ -249,73 +179,69 @@ export async function submitDailySale(
         customer.balance += credit.amount;
         await customer.save();
 
-        // Create Sale Record for Credit
-        const creditLiters = credit.amount / rate;
-        await Sale.create({
-            employerId,
-            pumpId: pump._id, // corrected: use resolved object ID
-            customerId: customer._id, // Link to customer
-            items: [{
-                productName: nozzle.fuelType,
-                category: "Fuel",
-                quantity: creditLiters,
-                unit: "L",
-                quantityInLiters: creditLiters,
-                rate: rate,
-                total: credit.amount,
-                purchaseRate: averagePurchaseRate,
-                purchaseTotal: creditLiters * averagePurchaseRate,
-                nozzleId: nozzleId
-            }],
-            subtotal: credit.amount,
-            tax: 0,
-            grandTotal: credit.amount,
-            amountPaid: 0, // Unpaid
-            changeReturned: 0,
-            paymentStatus: "Partial",
-            paymentMethod: "Cash", // Or "Credit" if added to Enum
-            notes: `Credit Sale - Customer: ${credit.name} (${credit.phone})`,
-            status: "Approved",
-            paymentHistory: []
+        // Track customer for sale record
+        creditCustomers.push({
+            customerId: customer._id,
+            name: credit.name,
+            phone: credit.phone,
+            amount: credit.amount
         });
     }
 
-    // 3. Process Cash Sale (Remaining)
-    if (cashAmount > 0) {
-        const cashLiters = cashAmount / rate;
-        await Sale.create({
-            employerId,
-            pumpId: pump._id, // corrected: use resolved object ID
-            items: [{
-                productName: nozzle.fuelType,
-                category: "Fuel",
-                quantity: cashLiters,
-                unit: "L",
-                quantityInLiters: cashLiters,
-                rate: rate,
-                total: cashAmount,
-                purchaseRate: averagePurchaseRate,
-                purchaseTotal: cashLiters * averagePurchaseRate,
-                nozzleId: nozzleId
-            }],
-            subtotal: cashAmount,
-            tax: 0,
-            grandTotal: cashAmount,
-            amountPaid: cashAmount,
-            changeReturned: 0,
-            paymentStatus: "Paid",
+    // 3. Create ONE Sale Record for the Entire Bulk Sale
+    const saleData: Partial<ISale> = {
+        employerId: new mongoose.Types.ObjectId(employerId),
+        pumpId: pump._id,
+        items: [{
+            productName: nozzle.fuelType,
+            category: "Fuel",
+            quantity: soldQuantity,
+            unit: "L",
+            quantityInLiters: soldQuantity,
+            rate: rate,
+            total: totalAmount,
+            purchaseRate: averagePurchaseRate,
+            purchaseTotal: soldQuantity * averagePurchaseRate,
+            nozzleId: nozzleId
+        }] as ISaleItem[],
+        subtotal: totalAmount,
+        tax: 0,
+        grandTotal: totalAmount,
+        amountPaid: cashAmount, // Cash received
+        changeReturned: 0,
+        paymentStatus: (creditTotal > 0 ? "Partial" : "Paid") as "Paid" | "Partial" | "Overpaid",
+        paymentMethod: "Cash",
+        status: "Approved",
+        paymentHistory: [{
+            action: "Initial Sale",
+            amount: cashAmount,
             paymentMethod: "Cash",
-            notes: "Daily Nozzle Cash Sale",
-            status: "Approved",
-            paymentHistory: [{
-                action: "Initial Sale",
-                amount: cashAmount,
-                paymentMethod: "Cash",
-                performedBy: "Employer", // Ideally fetch name
-                timestamp: new Date()
-            }]
-        });
+            performedBy: "Employer",
+            timestamp: new Date()
+        }] as IPaymentHistoryEntry[]
+    };
+
+    // Add notes about credit customers if any
+    if (creditCustomers.length > 0) {
+        const creditNotes = creditCustomers.map(c => `${c.name} (${c.phone}): Rs. ${c.amount}`).join(", ");
+        saleData.notes = `Bulk Sale - Credits: ${creditNotes}`;
+
+        // Populate creditCustomers array for proper tracking
+        saleData.creditCustomers = creditCustomers.map(c => ({
+            customerId: c.customerId,
+            amount: c.amount
+        }));
+
+        // Link the first customer if there's only one, or create a note for multiple
+        if (creditCustomers.length === 1) {
+            saleData.customerId = creditCustomers[0].customerId;
+        }
+    } else {
+        saleData.notes = "Daily Nozzle Bulk Sale - Full Cash Payment";
     }
+
+    await Sale.create(saleData);
+
 
     // 4. Update Nozzle
     nozzle.openingReading = closingReading;

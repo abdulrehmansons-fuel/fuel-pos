@@ -26,6 +26,7 @@ export interface ISale extends Document {
     employerId: mongoose.Types.ObjectId;
     pumpId: mongoose.Types.ObjectId;
     customerId?: mongoose.Types.ObjectId; // Optional: Link to Customer if credit sale
+    creditCustomers?: Array<{ customerId: mongoose.Types.ObjectId; amount: number }>; // For bulk sales with multiple credits
     items: ISaleItem[];
     subtotal: number;
     tax: number;
@@ -68,6 +69,10 @@ const SaleSchema = new Schema<ISale>(
         employerId: { type: Schema.Types.ObjectId, ref: "User", required: true },
         pumpId: { type: Schema.Types.ObjectId, ref: "FuelPump", required: true },
         customerId: { type: Schema.Types.ObjectId, ref: "Customer" },
+        creditCustomers: [{
+            customerId: { type: Schema.Types.ObjectId, ref: "Customer" },
+            amount: { type: Number }
+        }],
         items: { type: [SaleItemSchema], required: true },
         subtotal: { type: Number, required: true },
         tax: { type: Number, default: 0 },

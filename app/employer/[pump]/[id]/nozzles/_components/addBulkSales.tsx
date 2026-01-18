@@ -3,9 +3,7 @@
 import { useState, useEffect } from "react";
 import { submitDailySale, getFuelPrices } from "@/app/actions/nozzles";
 import { toast } from "sonner"; // Assuming sonner or similar toast
-// If sonner isn't installed, console log first? 
-// I'll assume standard UI components if available, but I don't see UI library in file list.
-// I'll use standard HTML/Tailwind.
+
 
 interface Nozzle {
     _id: string;
@@ -22,7 +20,7 @@ interface AddBulkSalesProps {
 
 export default function AddBulkSales({ pumpId, employerId, nozzles }: AddBulkSalesProps) {
     const [selectedNozzleId, setSelectedNozzleId] = useState("");
-    const [soldQuantity, setSoldQuantity] = useState<number | "">(""); // Renamed for clarity
+    const [closingReading, setClosingReading] = useState<number | "">("");
     const [prices, setPrices] = useState<Record<string, number>>({});
     const [creditSales, setCreditSales] = useState<{ name: string; phone: string; amount: number }[]>([]);
     const [loading, setLoading] = useState(false);
@@ -33,10 +31,11 @@ export default function AddBulkSales({ pumpId, employerId, nozzles }: AddBulkSal
 
     const selectedNozzle = nozzles.find(n => n._id === selectedNozzleId);
 
-    // soldQuantity is now the direct state
-    const inputQty = typeof soldQuantity === "number" ? soldQuantity : 0;
+    // Calculate sold quantity from closing reading - previous reading
+    const previousReading = selectedNozzle ? selectedNozzle.openingReading : 0;
+    const soldQuantity = typeof closingReading === "number" ? closingReading - previousReading : 0;
     const price = selectedNozzle ? prices[selectedNozzle.fuelType] || 0 : 0;
-    const totalAmount = inputQty * price;
+    const totalAmount = soldQuantity * price;
 
     // Credit Sales Handling
     const [newCredit, setNewCredit] = useState({ name: "", phone: "", amount: "" });
@@ -57,26 +56,23 @@ export default function AddBulkSales({ pumpId, employerId, nozzles }: AddBulkSal
     const balanceRemaining = totalAmount - totalCredits;
 
     const handleSubmit = async () => {
-        if (!selectedNozzleId || typeof soldQuantity !== "number" || soldQuantity <= 0) {
-            alert("Please select nozzle and enter valid quantity");
+        if (!selectedNozzleId || typeof closingReading !== "number") {
+            toast.error("Please select nozzle and enter closing reading");
+            return;
+        }
+
+        if (closingReading <= previousReading) {
+            toast.error("Closing reading must be greater than previous reading");
             return;
         }
 
         setLoading(true);
         try {
-            // We reuse 'closingReading' state as 'soldQuantity' from input.
-            // But the server action 'submitDailySale' expects 'soldQuantity' now?
-            // Wait, I need to update the server action signature too.
-            // Or I can send closingReading as (Opening + Input).
-            // The plan said: Update backend to accept soldQuantity.
-            // So here I will call it with soldQuantity.
-
-            await submitDailySale(pumpId, employerId, selectedNozzleId, soldQuantity, creditSales);
-            // closingReading here IS sold quantity based on my UI change.
+            await submitDailySale(pumpId, employerId, selectedNozzleId, closingReading, creditSales);
 
             // Reset form
             setSelectedNozzleId("");
-            setSoldQuantity("");
+            setClosingReading("");
             setCreditSales([]);
             toast.success("Daily Sale Recorded Successfully!");
         } catch (error) {
@@ -121,28 +117,28 @@ export default function AddBulkSales({ pumpId, employerId, nozzles }: AddBulkSal
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                 <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Today&apos;s Total Sale (Liters)</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Closing Reading</label>
                     <input
                         type="number"
                         placeholder="e.g. 1000"
                         className="block w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                        value={soldQuantity}
-                        onChange={(e) => setSoldQuantity(e.target.value === "" ? "" : Number(e.target.value))}
+                        value={closingReading}
+                        onChange={(e) => setClosingReading(e.target.value === "" ? "" : Number(e.target.value))}
                         disabled={!selectedNozzleId}
                     />
                     <p className="text-xs text-slate-500 mt-2 flex items-center gap-1">
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="16" y2="12" /><line x1="12" x2="12.01" y1="8" y2="8" /></svg>
-                        Enter the total quantity sold today.
+                        Enter Closing meter reading.
                     </p>
                 </div>
 
                 <div className="bg-teal-50 p-4 rounded-lg border border-teal-100">
                     <div className="flex justify-between flex-col gap-3">
                         <div>
-                            <p className="text-sm text-teal-700 font-medium">New Meter Reading (Calculated)</p>
+                            <p className="text-sm text-teal-700 font-medium">Fuel Sold (Calculated)</p>
                             <p className="text-2xl font-bold text-teal-900">
-                                {selectedNozzle && typeof soldQuantity === "number"
-                                    ? (selectedNozzle.openingReading + soldQuantity).toLocaleString()
+                                {selectedNozzle && typeof closingReading === "number"
+                                    ? soldQuantity.toLocaleString() + " L"
                                     : "—"}
                             </p>
                         </div>
@@ -152,7 +148,7 @@ export default function AddBulkSales({ pumpId, employerId, nozzles }: AddBulkSal
                                 <p className="text-xs text-teal-600">Rate: Rs. {price}</p>
                             </div>
                             <p className="text-2xl font-bold text-teal-900">Rs. {
-                                (typeof soldQuantity === "number" ? soldQuantity * price : 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                                totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
                             }</p>
                         </div>
                     </div>

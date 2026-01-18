@@ -15,23 +15,41 @@ interface CustomerData {
 export async function getNozzleCreditCustomers(pumpId: string, nozzleId: string): Promise<CustomerData[]> {
     await connectDB();
 
-    // 1. Find all "Partial" sales for this nozzle
-    // Note: nozzleId in Sale Items is a string.
-    // We need to match where items.nozzleId == nozzleId OR items matches nozzle name?
-    // In submitDailySale, we saved `nozzleId` (which is the _id from pump.nozzles).
-
-    // We want unique Customers.
+    // Find all sales for this nozzle that have credit customers
     const sales = await Sale.find({
         pumpId: pumpId,
         "items.nozzleId": nozzleId,
-        customerId: { $exists: true } // Only linked sales
-    }).select("customerId");
+        $or: [
+            { customerId: { $exists: true } }, // Old single customer format
+            { creditCustomers: { $exists: true, $ne: [] } } // New multiple customers format
+        ]
+    }).select("customerId creditCustomers");
 
-    const customerIds = [...new Set(sales.map(s => s.customerId.toString()))];
+    // Collect unique customer IDs from both formats
+    const customerIds = new Set<string>();
 
-    if (customerIds.length === 0) return [];
+    for (const sale of sales) {
+        // Handle old format (single customerId)
+        if (sale.customerId) {
+            customerIds.add(sale.customerId.toString());
+        }
 
-    const customers = await Customer.find({ _id: { $in: customerIds } }).lean();
+        // Handle new format (creditCustomers array)
+        if (sale.creditCustomers && Array.isArray(sale.creditCustomers)) {
+            for (const credit of sale.creditCustomers) {
+                if (credit.customerId) {
+                    customerIds.add(credit.customerId.toString());
+                }
+            }
+        }
+    }
+
+    if (customerIds.size === 0) return [];
+
+    const customers = await Customer.find({
+        _id: { $in: Array.from(customerIds) },
+        balance: { $ne: 0 }
+    }).lean();
 
     return JSON.parse(JSON.stringify(customers));
 }
