@@ -38,7 +38,7 @@ export function DeleteTransactionButton({ id }: DeleteTransactionButtonProps) {
                 toast.error(result.error || "Failed to delete transaction");
                 setIsDeleting(false);
             }
-        } catch (error) {
+        } catch {
             toast.error("An error occurred while deleting");
             setIsDeleting(false);
         }

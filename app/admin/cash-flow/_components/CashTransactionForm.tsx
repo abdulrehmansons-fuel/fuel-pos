@@ -26,8 +26,10 @@ const formSchema = z.object({
     notes: z.string().optional(),
 });
 
+import { ICashTransaction } from "@/models/CashTransaction";
+
 interface CashTransactionFormProps {
-    initialData?: any;
+    initialData?: Partial<ICashTransaction> & { _id?: string };
     isEdit?: boolean;
 }
 
@@ -69,7 +71,7 @@ export default function CashTransactionForm({ initialData, isEdit = false }: Cas
             } else {
                 toast.error(result.error || "Something went wrong");
             }
-        } catch (error) {
+        } catch {
             toast.error("An unexpected error occurred");
         } finally {
             setIsSubmitting(false);

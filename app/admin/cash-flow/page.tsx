@@ -1,5 +1,6 @@
 
 import { getCashTransactions } from "@/app/actions/cash-transactions";
+import { ICashTransaction } from "@/models/CashTransaction";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -51,8 +52,8 @@ export default async function CashFlowPage({
                                 </TableCell>
                             </TableRow>
                         ) : (
-                            transactions.map((t: any) => (
-                                <TableRow key={t._id}>
+                            transactions.map((t: ICashTransaction) => (
+                                <TableRow key={t._id.toString()}>
                                     <TableCell>{new Date(t.date).toLocaleDateString()}</TableCell>
                                     <TableCell className="font-medium">{t.entityName}</TableCell>
                                     <TableCell>

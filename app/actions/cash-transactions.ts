@@ -1,7 +1,7 @@
 "use server";
 
 import connectDB from "@/lib/db";
-import CashTransaction from "@/models/CashTransaction";
+import CashTransaction, { ICashTransaction } from "@/models/CashTransaction";
 import { revalidatePath } from "next/cache";
 
 export async function getCashTransactions(filterType?: string) {
@@ -18,18 +18,18 @@ export async function getCashTransactionById(id: string) {
     return JSON.parse(JSON.stringify(transaction));
 }
 
-export async function createCashTransaction(data: any) {
+export async function createCashTransaction(data: Partial<ICashTransaction>) {
     await connectDB();
     try {
         const newTransaction = await CashTransaction.create(data);
         revalidatePath("/admin/cash-flow");
         return { success: true, data: JSON.parse(JSON.stringify(newTransaction)) };
-    } catch (error: any) {
-        return { success: false, error: error.message };
+    } catch (error: unknown) {
+        return { success: false, error: error instanceof Error ? error.message : "An unknown error occurred" };
     }
 }
 
-export async function updateCashTransaction(id: string, data: any) {
+export async function updateCashTransaction(id: string, data: Partial<ICashTransaction>) {
     await connectDB();
     try {
         const transaction = await CashTransaction.findByIdAndUpdate(id, data, { new: true, runValidators: true });
@@ -38,8 +38,8 @@ export async function updateCashTransaction(id: string, data: any) {
         revalidatePath("/admin/cash-flow");
         revalidatePath(`/admin/cash-flow/${id}`);
         return { success: true, data: JSON.parse(JSON.stringify(transaction)) };
-    } catch (error: any) {
-        return { success: false, error: error.message };
+    } catch (error: unknown) {
+        return { success: false, error: error instanceof Error ? error.message : "An unknown error occurred" };
     }
 }
 
@@ -49,7 +49,7 @@ export async function deleteCashTransaction(id: string) {
         await CashTransaction.findByIdAndDelete(id);
         revalidatePath("/admin/cash-flow");
         return { success: true };
-    } catch (error: any) {
-        return { success: false, error: error.message };
+    } catch (error: unknown) {
+        return { success: false, error: error instanceof Error ? error.message : "An unknown error occurred" };
     }
 }
