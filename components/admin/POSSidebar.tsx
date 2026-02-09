@@ -6,6 +6,7 @@ import {
   User,
   Receipt,
   FileText,
+  Banknote,
 } from "lucide-react";
 
 const menuItems = [
@@ -16,6 +17,7 @@ const menuItems = [
   { icon: BarChart3, label: "Sales", href: "/admin/sales" },
   { icon: Receipt, label: "Expenses", href: "/admin/expenses" },
   { icon: FileText, label: "Reports", href: "/admin/report" },
+  { icon: Banknote, label: "Cash Management", href: "/admin/cash-flow" },
 ];
 
 export const AdminSidebar = () => {
