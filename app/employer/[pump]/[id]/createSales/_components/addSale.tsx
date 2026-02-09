@@ -55,6 +55,7 @@ export default function CreateSale() {
 
     const [products, setProducts] = useState<Product[]>([]);
     const [pumpData, setPumpData] = useState<PumpData | null>(null);
+    const [selectedCategory, setSelectedCategory] = useState<string>("");
 
     useEffect(() => {
         const fetchData = async () => {
@@ -132,6 +133,21 @@ export default function CreateSale() {
                 quantity: 0,
             });
         }
+    };
+
+    const handleCategorySelect = (category: string) => {
+        setSelectedCategory(category);
+        // Reset nozzle when category changes
+        setCurrentItem({
+            ...currentItem,
+            nozzleId: "",
+            productName: "",
+            category: category,
+            rate: 0,
+            unit: "L",
+            totalAmount: 0,
+            quantity: 0,
+        });
     };
 
     const handleAmountChange = (amount: number) => {
@@ -252,6 +268,26 @@ export default function CreateSale() {
                             </h2>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {/* Category Selection */}
+                                <div className="md:col-span-2">
+                                    <Label htmlFor="main-category">Main Category</Label>
+                                    <Select
+                                        value={selectedCategory}
+                                        onValueChange={handleCategorySelect}
+                                    >
+                                        <SelectTrigger className="mt-1">
+                                            <SelectValue placeholder="Select Category (Petrol, Diesel, etc.)" />
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-white">
+                                            {["Petrol", "Diesel", "High-Octane", "Engine Oil", "Lubricants"].map((cat) => (
+                                                <SelectItem key={cat} value={cat}>
+                                                    {cat}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
                                 {/* Nozzle Selection */}
                                 {pumpData?.nozzles && pumpData.nozzles.length > 0 && (
                                     <div className="md:col-span-2">
@@ -259,16 +295,19 @@ export default function CreateSale() {
                                         <Select
                                             value={currentItem.nozzleId}
                                             onValueChange={handleNozzleSelect}
+                                            disabled={!selectedCategory}
                                         >
                                             <SelectTrigger className="mt-1">
-                                                <SelectValue placeholder="Select nozzle" />
+                                                <SelectValue placeholder={selectedCategory ? "Select nozzle" : "Select category first"} />
                                             </SelectTrigger>
                                             <SelectContent className="bg-white max-h-60">
-                                                {pumpData.nozzles.map((nozzle) => (
-                                                    <SelectItem key={nozzle.name} value={nozzle.name}>
-                                                        {nozzle.name} - {nozzle.fuelType}
-                                                    </SelectItem>
-                                                ))}
+                                                {pumpData.nozzles
+                                                    .filter(n => n.fuelType === selectedCategory)
+                                                    .map((nozzle) => (
+                                                        <SelectItem key={nozzle.name} value={nozzle.name}>
+                                                            {nozzle.name}
+                                                        </SelectItem>
+                                                    ))}
                                             </SelectContent>
                                         </Select>
                                     </div>
@@ -287,11 +326,13 @@ export default function CreateSale() {
                                             {products.length === 0 ? (
                                                 <div className="p-2 text-sm text-gray-500">No stocks available</div>
                                             ) : (
-                                                products.map((product) => (
-                                                    <SelectItem key={product.name} value={product.name}>
-                                                        {product.name}
-                                                    </SelectItem>
-                                                ))
+                                                products
+                                                    .filter(p => !selectedCategory || p.category === selectedCategory)
+                                                    .map((product) => (
+                                                        <SelectItem key={product.name} value={product.name}>
+                                                            {product.name}
+                                                        </SelectItem>
+                                                    ))
                                             )}
                                         </SelectContent>
                                     </Select>
