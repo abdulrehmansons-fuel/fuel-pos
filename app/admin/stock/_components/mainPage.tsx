@@ -43,6 +43,10 @@ interface Stock {
   purchaseDate: string; // ISO date string
   supplier?: string;
   pump: string;
+  lubeCategory?: string;
+  unitVolume?: number;
+  lubeName?: string;
+  unitsQuantity?: number;
 }
 
 const Stock = () => {
@@ -301,13 +305,29 @@ const Stock = () => {
               ) : (
                 filteredData.map((item) => (
                   <TableRow key={item._id} className="hover:bg-gray-100 transition-colors">
-                    <TableCell className="font-medium text-[#020617]">{item.fuelType}</TableCell>
+                    <TableCell className="font-medium text-[#020617]">
+                      {item.fuelType === 'Lubricants' && item.lubeName
+                        ? `${item.lubeCategory || ''} - ${item.lubeName} (${item.unitVolume}L)`
+                        : item.fuelType}
+                    </TableCell>
                     <TableCell className="text-[#64748b]">{item.pump}</TableCell>
-                    <TableCell className="text-right">{item.quantity.toLocaleString()}</TableCell>
-                    <TableCell className="text-right">Rs. {item.purchasePricePerLiter}</TableCell>
-                    <TableCell className="text-right font-semibold text-blue-600">Rs. {item.salePricePerLiter}</TableCell>
+                    <TableCell className="text-right">
+                      {item.fuelType === 'Lubricants' && item.unitsQuantity
+                        ? `${item.unitsQuantity} Gallons`
+                        : item.quantity.toLocaleString()}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      Rs. {item.fuelType === 'Lubricants' && item.unitVolume
+                        ? (item.purchasePricePerLiter * item.unitVolume).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ` /Pk`
+                        : item.purchasePricePerLiter + ` /L`}
+                    </TableCell>
+                    <TableCell className="text-right font-semibold text-blue-600">
+                      Rs. {item.fuelType === 'Lubricants' && item.unitVolume
+                        ? (item.salePricePerLiter * item.unitVolume).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ` /Pk`
+                        : item.salePricePerLiter + ` /L`}
+                    </TableCell>
                     <TableCell className="text-right font-medium text-green-700">
-                      Rs. {(item.quantity * item.purchasePricePerLiter).toLocaleString()}
+                      Rs. {(item.quantity * item.purchasePricePerLiter).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </TableCell>
                     <TableCell className="text-[#64748b]">
                       {new Date(item.purchaseDate).toLocaleDateString()}

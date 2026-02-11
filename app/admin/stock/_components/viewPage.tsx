@@ -28,6 +28,10 @@ type StockViewData = {
   purchaseDate: string;
   notes: string;
   pump: string;
+  lubeCategory?: string;
+  unitVolume?: number;
+  lubeName?: string;
+  unitsQuantity?: number;
 };
 
 const StockView = ({ id }: { id: string }) => {
@@ -172,12 +176,25 @@ const StockView = ({ id }: { id: string }) => {
 
             <div className="flex flex-col space-y-1">
               <span className="text-xs uppercase text-[#64748b] tracking-wide">
-                Fuel Type
+                Fuel Type / Product
               </span>
               <span className="text-base text-[#020617] font-medium">
-                {data.fuelType}
+                {data.fuelType === 'Lubricants' && data.lubeName
+                  ? `${data.lubeCategory || ''} - ${data.lubeName}`
+                  : data.fuelType}
               </span>
             </div>
+
+            {data.fuelType === 'Lubricants' && data.unitVolume && (
+              <div className="flex flex-col space-y-1">
+                <span className="text-xs uppercase text-[#64748b] tracking-wide">
+                  Volume (Pack Size)
+                </span>
+                <span className="text-base text-[#020617] font-medium">
+                  {data.unitVolume} Liters
+                </span>
+              </div>
+            )}
 
             <div className="flex flex-col space-y-1">
               <span className="text-xs uppercase text-[#64748b] tracking-wide">
@@ -190,19 +207,23 @@ const StockView = ({ id }: { id: string }) => {
 
             <div className="flex flex-col space-y-1">
               <span className="text-xs uppercase text-[#64748b] tracking-wide">
-                Quantity (Liters)
+                Quantity
               </span>
               <span className="text-base text-[#020617] font-medium">
-                {data.quantity.toLocaleString()} L
+                {data.fuelType === 'Lubricants' && data.unitsQuantity
+                  ? `${data.unitsQuantity} Gallons (${formatCurrency(data.quantity).replace("Rs. ", "")} L)`
+                  : `${formatCurrency(data.quantity).replace("Rs. ", "")} L`}
               </span>
             </div>
 
             <div className="flex flex-col space-y-1">
               <span className="text-xs uppercase text-[#64748b] tracking-wide">
-                Price Per Liter
+                Price Per {data.fuelType === 'Lubricants' ? 'Pack' : 'Liter'}
               </span>
               <span className="text-base text-[#020617] font-medium">
-                {formatCurrency(data.purchasePricePerLiter)}
+                {data.fuelType === 'Lubricants' && data.unitVolume
+                  ? formatCurrency(data.purchasePricePerLiter * data.unitVolume)
+                  : formatCurrency(data.purchasePricePerLiter)}
               </span>
             </div>
 
@@ -217,10 +238,12 @@ const StockView = ({ id }: { id: string }) => {
 
             <div className="flex flex-col space-y-1">
               <span className="text-xs uppercase text-[#64748b] tracking-wide">
-                Sale Price Per Liter
+                Sale Price Per {data.fuelType === 'Lubricants' ? 'Pack' : 'Liter'}
               </span>
               <span className="text-base text-[#020617] font-medium">
-                {formatCurrency(data.salePricePerLiter)}
+                {data.fuelType === 'Lubricants' && data.unitVolume
+                  ? formatCurrency(data.salePricePerLiter * data.unitVolume)
+                  : formatCurrency(data.salePricePerLiter)}
               </span>
             </div>
 

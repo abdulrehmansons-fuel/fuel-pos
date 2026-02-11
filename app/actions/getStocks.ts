@@ -26,28 +26,35 @@ export async function getPumpStocks(pumpName: string): Promise<Product[]> {
             return [];
         }
 
-        // Group by fuelType
+        // Group by fuelType or Lube Identity
         const stockMap = new Map<string, {
             totalQuantity: number;
             salePrice: number;
             updatedAt: Date;
+            isLubricant: boolean;
+            unitVolume?: number;
+            lubeName?: string;
         }>();
 
         stocks.forEach(stock => {
-            const current = stockMap.get(stock.fuelType);
+            let key = stock.fuelType;
+            let isLubricant = false;
 
-            // We want the latest sale price, so we track update time
-            // Or we could average it, but usually the latest add/edit reflects current price. 
-            // However, different batches might have different prices. 
-            // For now, let's take the salePrice from the most recently updated stock entry 
-            // OR if the requirement implies a single global price, we might need a different approach.
-            // Given the prompt: "fetch the setted sale price of that category stock"
+            if (stock.fuelType === 'Lubricants' && stock.lubeName && stock.unitVolume) {
+                key = `${stock.lubeName} (${stock.unitVolume}L)`;
+                isLubricant = true;
+            }
+
+            const current = stockMap.get(key);
 
             if (!current) {
-                stockMap.set(stock.fuelType, {
+                stockMap.set(key, {
                     totalQuantity: stock.quantity,
                     salePrice: stock.salePricePerLiter,
-                    updatedAt: new Date(stock.updatedAt)
+                    updatedAt: new Date(stock.updatedAt),
+                    isLubricant,
+                    unitVolume: stock.unitVolume,
+                    lubeName: stock.lubeName
                 });
             } else {
                 current.totalQuantity += stock.quantity;
@@ -61,18 +68,30 @@ export async function getPumpStocks(pumpName: string): Promise<Product[]> {
 
         // Convert map to Product array
         const products: Product[] = [];
-        stockMap.forEach((data, fuelType) => {
-            // Determine unit based on fuel type (simplified logic, can be expanded)
-            // Assuming most fuels are Liter based.
-            // If there's a specific logic for pieces/mL, it should be added here.
+        stockMap.forEach((data, key) => {
+            let rate = data.salePrice;
+            let quantity = data.totalQuantity;
+            let unit: "L" | "mL" | "pcs" = "L";
+
+            if (data.isLubricant && data.unitVolume) {
+                // Convert Rate Per Liter -> Rate Per Pack
+                rate = data.salePrice * data.unitVolume;
+                // Convert Total Liters -> Total Packs
+                quantity = Math.floor(data.totalQuantity / data.unitVolume); // Packs should be integers? Or allow decimals?
+                // Actually stock might be fractional if we sold partial? But sales are usually whole.
+                // stock.quantity stored actual liters. 
+                // Let's allow decimal packs just in case, but usually integers.
+                quantity = Number((data.totalQuantity / data.unitVolume).toFixed(2));
+                unit = "pcs";
+            }
 
             products.push({
-                name: fuelType,
-                category: fuelType, // Using fuelType as category for now
-                rate: data.salePrice,
-                unit: "L", // Defaulting to L for fuel
-                defaultUnit: "L",
-                totalQuantity: data.totalQuantity
+                name: key,
+                category: data.isLubricant ? 'Lubricants' : key,
+                rate: Number(rate.toFixed(2)),
+                unit: unit,
+                defaultUnit: unit,
+                totalQuantity: quantity
             });
         });
 

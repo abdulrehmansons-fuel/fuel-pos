@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { submitDailySale, getFuelPrices } from "@/app/actions/nozzles";
 import { toast } from "sonner"; // Assuming sonner or similar toast
+import { getLubricantVariations, submitLubricantBulkSale } from "@/app/actions/lubricants";
 
 
 interface Nozzle {
@@ -20,14 +21,30 @@ interface AddBulkSalesProps {
 
 export default function AddBulkSales({ pumpId, employerId, nozzles }: AddBulkSalesProps) {
     const [selectedCategory, setSelectedCategory] = useState("");
+    const [lubeSubCategory, setLubeSubCategory] = useState<'Petrol' | 'Diesel'>('Petrol');
     const [closingReadings, setClosingReadings] = useState<Record<string, number | "">>({});
+    const [lubeVariations, setLubeVariations] = useState<{ lubeName: string; unitVolume: number; totalUnits: number; salePricePerUnit: number }[]>([]);
+    const [lubeSales, setLubeSales] = useState<Record<string, number | "">>({});
     const [prices, setPrices] = useState<Record<string, number>>({});
-    const [creditSales, setCreditSales] = useState<{ nozzleId: string; name: string; phone: string; amount: number }[]>([]);
+    const [creditSales, setCreditSales] = useState<{ nozzleId?: string; lubeKey?: string; name: string; phone: string; amount: number }[]>([]);
     const [loading, setLoading] = useState(false);
+    const [fetchingLubes, setFetchingLubes] = useState(false);
 
     useEffect(() => {
         getFuelPrices().then(setPrices);
     }, []);
+
+    const isLubeCategory = selectedCategory === "Engine Oil" || selectedCategory === "Lubricants";
+
+    useEffect(() => {
+        if (isLubeCategory) {
+            setFetchingLubes(true);
+            getLubricantVariations(selectedCategory, lubeSubCategory)
+                .then(setLubeVariations)
+                .finally(() => setFetchingLubes(false));
+            setLubeSales({});
+        }
+    }, [selectedCategory, lubeSubCategory, isLubeCategory]);
 
     const filteredNozzles = nozzles.filter(n => n.fuelType === selectedCategory);
 
@@ -47,17 +64,41 @@ export default function AddBulkSales({ pumpId, employerId, nozzles }: AddBulkSal
         };
     });
 
-    const grandTotalAmount = nozzleCalculations.reduce((sum, n) => sum + n.totalAmount, 0);
-    const totalSoldQuantity = nozzleCalculations.reduce((sum, n) => sum + n.soldQuantity, 0);
+    const lubeCalculations = lubeVariations.map(variation => {
+        const key = `${variation.lubeName}-${variation.unitVolume}`;
+        const qtySold = Number(lubeSales[key]) || 0;
+        const totalAmount = qtySold * variation.salePricePerUnit;
+        return {
+            ...variation,
+            key,
+            qtySold,
+            totalAmount,
+            isValid: qtySold > 0 && qtySold <= variation.totalUnits
+        };
+    });
+
+    const grandTotalAmount = isLubeCategory
+        ? lubeCalculations.reduce((sum, v) => sum + v.totalAmount, 0)
+        : nozzleCalculations.reduce((sum, n) => sum + n.totalAmount, 0);
+
+    const totalSoldQuantity = isLubeCategory
+        ? lubeCalculations.reduce((sum, v) => sum + v.qtySold, 0) // This is units for lubes
+        : nozzleCalculations.reduce((sum, n) => sum + n.soldQuantity, 0);
 
     // Credit Sales Handling
-    const [newCredit, setNewCredit] = useState({ nozzleId: "", name: "", phone: "", amount: "" });
+    const [newCredit, setNewCredit] = useState({ nozzleId: "", lubeKey: "", name: "", phone: "", amount: "" });
 
     const addCreditSale = () => {
-        if (!newCredit.nozzleId || !newCredit.name || !newCredit.phone || !newCredit.amount) {
-            toast.error("Please fill all credit fields including nozzle selection");
+        if (!newCredit.name || !newCredit.phone || !newCredit.amount) {
+            toast.error("Please fill Name, Phone and Amount");
             return;
         }
+
+        if (!isLubeCategory && !newCredit.nozzleId) {
+            toast.error("Please select a nozzle");
+            return;
+        }
+
         setCreditSales([...creditSales, { ...newCredit, amount: Number(newCredit.amount) }]);
         setNewCredit({ ...newCredit, name: "", phone: "", amount: "" });
     };
@@ -72,6 +113,38 @@ export default function AddBulkSales({ pumpId, employerId, nozzles }: AddBulkSal
     const balanceRemaining = grandTotalAmount - totalCredits;
 
     const handleSubmit = async () => {
+        if (isLubeCategory) {
+            const itemsToSubmit = lubeCalculations.filter(v => v.isValid);
+            if (itemsToSubmit.length === 0) {
+                toast.error("Please enter valid sales units for at least one variation");
+                return;
+            }
+            setLoading(true);
+            try {
+                const salesData = itemsToSubmit.map(v => ({
+                    lubeName: v.lubeName,
+                    unitVolume: v.unitVolume,
+                    quantityUnits: v.qtySold,
+                    pricePerUnit: v.salePricePerUnit
+                }));
+
+                const credits = creditSales.map(({ name, phone, amount }) => ({ name, phone, amount }));
+
+                await submitLubricantBulkSale(pumpId, employerId, selectedCategory, lubeSubCategory, salesData, credits);
+
+                setSelectedCategory("");
+                setLubeSales({});
+                setCreditSales([]);
+                toast.success("Lubricant sales recorded successfully!");
+            } catch (error) {
+                console.error(error);
+                toast.error(error instanceof Error ? error.message : "Failed to record sales");
+            } finally {
+                setLoading(false);
+            }
+            return;
+        }
+
         const nozzlesToSubmit = nozzleCalculations.filter(n => n.isValid);
 
         if (nozzlesToSubmit.length === 0) {
@@ -126,6 +199,7 @@ export default function AddBulkSales({ pumpId, employerId, nozzles }: AddBulkSal
                             onClick={() => {
                                 setSelectedCategory(cat);
                                 setClosingReadings({});
+                                setLubeSales({});
                                 setCreditSales([]);
                             }}
                             className={`px-4 py-2 rounded-full border transition-all text-sm font-medium ${selectedCategory === cat
@@ -139,70 +213,157 @@ export default function AddBulkSales({ pumpId, employerId, nozzles }: AddBulkSal
                 </div>
             </div>
 
+            {selectedCategory && isLubeCategory && (
+                <div className="mb-6 flex gap-4 border-b border-slate-100 pb-4">
+                    <button
+                        onClick={() => setLubeSubCategory('Petrol')}
+                        className={`px-6 py-2 rounded-lg font-bold text-sm transition-all ${lubeSubCategory === 'Petrol'
+                            ? "bg-slate-800 text-white shadow-md scale-[1.02]"
+                            : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                            }`}
+                    >
+                        Petrol Variations
+                    </button>
+                    <button
+                        onClick={() => setLubeSubCategory('Diesel')}
+                        className={`px-6 py-2 rounded-lg font-bold text-sm transition-all ${lubeSubCategory === 'Diesel'
+                            ? "bg-slate-800 text-white shadow-md scale-[1.02]"
+                            : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                            }`}
+                    >
+                        Diesel Variations
+                    </button>
+                </div>
+            )}
+
             {selectedCategory ? (
                 <div className="mb-8">
-                    <div className="overflow-x-auto rounded-xl border border-slate-200">
-                        <table className="w-full text-left border-collapse">
-                            <thead className="bg-slate-50 border-b border-slate-200">
-                                <tr>
-                                    <th className="p-4 font-semibold text-slate-700 text-sm">Nozzle</th>
-                                    <th className="p-4 font-semibold text-slate-700 text-sm">Previous Reading</th>
-                                    <th className="p-4 font-semibold text-slate-700 text-sm">Closing Reading</th>
-                                    <th className="p-4 font-semibold text-slate-700 text-sm">Sold (L)</th>
-                                    <th className="p-4 font-semibold text-slate-700 text-sm">Sale Price</th>
-                                    <th className="p-4 font-semibold text-slate-700 text-sm text-right">Total Amount</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {nozzleCalculations.map((n) => (
-                                    <tr key={n._id} className="hover:bg-slate-50/50 transition-colors">
-                                        <td className="p-4">
-                                            <span className="font-bold text-slate-800">{n.name}</span>
-                                            <div className="text-[10px] text-slate-400 uppercase tracking-tighter">{n.fuelType}</div>
-                                        </td>
-                                        <td className="p-4 text-slate-600 font-mono">
-                                            {n.openingReading.toLocaleString()}
-                                        </td>
-                                        <td className="p-4">
-                                            <input
-                                                type="number"
-                                                className={`w-32 p-2 border rounded-lg focus:ring-2 focus:ring-teal-500 outline-none transition-all ${closingReadings[n._id] && !n.isValid ? "border-red-300 bg-red-50" : "border-slate-200"
-                                                    }`}
-                                                placeholder="Enter reading"
-                                                value={closingReadings[n._id]}
-                                                onChange={(e) => setClosingReadings({
-                                                    ...closingReadings,
-                                                    [n._id]: e.target.value === "" ? "" : Number(e.target.value)
-                                                })}
-                                            />
-                                        </td>
-                                        <td className="p-4">
-                                            <span className={`font-semibold ${n.soldQuantity > 0 ? "text-teal-600" : "text-slate-300"}`}>
-                                                {n.soldQuantity > 0 ? `${n.soldQuantity.toLocaleString()} L` : "—"}
-                                            </span>
-                                        </td>
-                                        <td className="p-4">
-                                            <span className="text-slate-600 font-medium">Rs. {n.price.toFixed(2)}</span>
-                                        </td>
-                                        <td className="p-4 text-right">
-                                            <span className={`font-bold ${n.totalAmount > 0 ? "text-slate-900" : "text-slate-300"}`}>
-                                                {n.totalAmount > 0 ? `Rs. ${n.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "—"}
-                                            </span>
+                    {isLubeCategory ? (
+                        fetchingLubes ? (
+                            <div className="p-12 text-center text-slate-400">Loading variations...</div>
+                        ) : (
+                            <div className="overflow-x-auto rounded-xl border border-slate-200">
+                                <table className="w-full text-left border-collapse">
+                                    <thead className="bg-slate-50 border-b border-slate-200">
+                                        <tr>
+                                            <th className="p-4 font-semibold text-slate-700 text-sm whitespace-nowrap">Variation (Volume - Brand)</th>
+                                            <th className="p-4 font-semibold text-slate-700 text-sm whitespace-nowrap">Old Stock (Units)</th>
+                                            <th className="p-4 font-semibold text-slate-700 text-sm whitespace-nowrap">Units Sold</th>
+                                            <th className="p-4 font-semibold text-slate-700 text-sm whitespace-nowrap">Sale Price</th>
+                                            <th className="p-4 font-semibold text-slate-700 text-sm text-right whitespace-nowrap">Total Amount</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                        {lubeCalculations.map((v) => (
+                                            <tr key={v.key} className="hover:bg-slate-50/50 transition-colors">
+                                                <td className="p-4">
+                                                    <div className="font-bold text-slate-800">{v.unitVolume}L - {v.lubeName}</div>
+                                                </td>
+                                                <td className="p-4 text-slate-600 font-mono">
+                                                    {v.totalUnits.toLocaleString()} units
+                                                </td>
+                                                <td className="p-4">
+                                                    <input
+                                                        type="number"
+                                                        className={`w-32 p-2 border rounded-lg focus:ring-2 focus:ring-teal-500 outline-none transition-all ${lubeSales[v.key] && !v.isValid ? "border-red-300 bg-red-50" : "border-slate-200"
+                                                            }`}
+                                                        placeholder="Enter units"
+                                                        value={lubeSales[v.key]}
+                                                        onChange={(e) => setLubeSales({
+                                                            ...lubeSales,
+                                                            [v.key]: e.target.value === "" ? "" : Number(e.target.value)
+                                                        })}
+                                                    />
+                                                </td>
+                                                <td className="p-4 whitespace-nowrap tabular-nums">
+                                                    <span className="text-slate-600 font-medium">Rs. {v.salePricePerUnit.toFixed(2)}</span>
+                                                </td>
+                                                <td className="p-4 text-right whitespace-nowrap tabular-nums">
+                                                    <span className={`font-bold ${v.totalAmount > 0 ? "text-slate-900" : "text-slate-300"}`}>
+                                                        {v.totalAmount > 0 ? `Rs. ${v.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "—"}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                    <tfoot className="bg-teal-50/50 border-t border-teal-100 italic">
+                                        <tr className="font-bold text-teal-900">
+                                            <td colSpan={2} className="p-4 text-right uppercase text-[10px] tracking-widest text-teal-700">Grand Total</td>
+                                            <td className="p-4 whitespace-nowrap tabular-nums">{totalSoldQuantity.toLocaleString()} units</td>
+                                            <td className="p-4"></td>
+                                            <td className="p-4 text-right text-lg whitespace-nowrap tabular-nums">
+                                                Rs. {grandTotalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                            </td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        )
+                    ) : (
+                        <div className="overflow-x-auto rounded-xl border border-slate-200">
+                            <table className="w-full text-left border-collapse">
+                                <thead className="bg-slate-50 border-b border-slate-200">
+                                    <tr>
+                                        <th className="p-4 font-semibold text-slate-700 text-sm whitespace-nowrap">Nozzle</th>
+                                        <th className="p-4 font-semibold text-slate-700 text-sm whitespace-nowrap">Previous Reading</th>
+                                        <th className="p-4 font-semibold text-slate-700 text-sm whitespace-nowrap">Closing Reading</th>
+                                        <th className="p-4 font-semibold text-slate-700 text-sm whitespace-nowrap">Sold (L)</th>
+                                        <th className="p-4 font-semibold text-slate-700 text-sm whitespace-nowrap">Sale Price</th>
+                                        <th className="p-4 font-semibold text-slate-700 text-sm text-right whitespace-nowrap">Total Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {nozzleCalculations.map((n) => (
+                                        <tr key={n._id} className="hover:bg-slate-50/50 transition-colors">
+                                            <td className="p-4">
+                                                <span className="font-bold text-slate-800">{n.name}</span>
+                                                <div className="text-[10px] text-slate-400 uppercase tracking-tighter">{n.fuelType}</div>
+                                            </td>
+                                            <td className="p-4 text-slate-600 font-mono">
+                                                {n.openingReading.toLocaleString()}
+                                            </td>
+                                            <td className="p-4">
+                                                <input
+                                                    type="number"
+                                                    className={`w-32 p-2 border rounded-lg focus:ring-2 focus:ring-teal-500 outline-none transition-all ${closingReadings[n._id] && !n.isValid ? "border-red-300 bg-red-50" : "border-slate-200"
+                                                        }`}
+                                                    placeholder="Enter reading"
+                                                    value={closingReadings[n._id]}
+                                                    onChange={(e) => setClosingReadings({
+                                                        ...closingReadings,
+                                                        [n._id]: e.target.value === "" ? "" : Number(e.target.value)
+                                                    })}
+                                                />
+                                            </td>
+                                            <td className="p-4 whitespace-nowrap tabular-nums">
+                                                <span className={`font-semibold ${n.soldQuantity > 0 ? "text-teal-600" : "text-slate-300"}`}>
+                                                    {n.soldQuantity > 0 ? `${n.soldQuantity.toLocaleString()} L` : "—"}
+                                                </span>
+                                            </td>
+                                            <td className="p-4 whitespace-nowrap tabular-nums">
+                                                <span className="text-slate-600 font-medium">Rs. {n.price.toFixed(2)}</span>
+                                            </td>
+                                            <td className="p-4 text-right whitespace-nowrap tabular-nums">
+                                                <span className={`font-bold ${n.totalAmount > 0 ? "text-slate-900" : "text-slate-300"}`}>
+                                                    {n.totalAmount > 0 ? `Rs. ${n.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "—"}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                                <tfoot className="bg-teal-50/50 border-t border-teal-100 italic">
+                                    <tr className="font-bold text-teal-900">
+                                        <td colSpan={3} className="p-4 text-right uppercase text-[10px] tracking-widest text-teal-700">Grand Total</td>
+                                        <td className="p-4 whitespace-nowrap tabular-nums">{totalSoldQuantity.toLocaleString()} L</td>
+                                        <td className="p-4"></td>
+                                        <td className="p-4 text-right text-lg whitespace-nowrap tabular-nums">
+                                            Rs. {grandTotalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                         </td>
                                     </tr>
-                                ))}
-                            </tbody>
-                            <tfoot className="bg-teal-50/50 border-t border-teal-100">
-                                <tr className="font-bold text-teal-900">
-                                    <td colSpan={3} className="p-4 text-right uppercase text-xs tracking-wider">Grand Total</td>
-                                    <td className="p-4">{totalSoldQuantity.toLocaleString()} L</td>
-                                    <td className="p-4 text-right text-lg">
-                                        Rs. {grandTotalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                    </td>
-                                </tr>
-                            </tfoot>
-                        </table>
-                    </div>
+                                </tfoot>
+                            </table>
+                        </div>
+                    )}
                 </div>
             ) : (
                 <div className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-xl p-12 text-center mb-8">
@@ -221,17 +382,22 @@ export default function AddBulkSales({ pumpId, employerId, nozzles }: AddBulkSal
 
                 <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 mb-4">
                     <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
-                        <select
-                            className="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-teal-500 bg-white"
-                            value={newCredit.nozzleId}
-                            onChange={e => setNewCredit({ ...newCredit, nozzleId: e.target.value })}
-                            disabled={!selectedCategory}
-                        >
-                            <option value="">Select Nozzle</option>
-                            {filteredNozzles.map(n => (
-                                <option key={n._id} value={n._id}>{n.name}</option>
-                            ))}
-                        </select>
+                        {!isLubeCategory ? (
+                            <select
+                                className="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-teal-500 bg-white"
+                                value={newCredit.nozzleId}
+                                onChange={e => setNewCredit({ ...newCredit, nozzleId: e.target.value })}
+                            >
+                                <option value="">Select Nozzle</option>
+                                {filteredNozzles.map(n => (
+                                    <option key={n._id} value={n._id}>{n.name}</option>
+                                ))}
+                            </select>
+                        ) : (
+                            <div className="w-full p-2 border border-slate-200 rounded bg-slate-100 flex items-center text-xs text-slate-500 font-medium">
+                                Bulk Credit
+                            </div>
+                        )}
                         <input
                             placeholder="Customer Name"
                             className="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-teal-500"
@@ -265,7 +431,7 @@ export default function AddBulkSales({ pumpId, employerId, nozzles }: AddBulkSal
                         <table className="w-full text-sm">
                             <thead className="bg-slate-100 border-b border-slate-200">
                                 <tr>
-                                    <th className="p-3 text-left font-medium text-slate-700">Nozzle</th>
+                                    {!isLubeCategory && <th className="p-3 text-left font-medium text-slate-700">Nozzle</th>}
                                     <th className="p-3 text-left font-medium text-slate-700">Name</th>
                                     <th className="p-3 text-left font-medium text-slate-700">Phone</th>
                                     <th className="p-3 text-right font-medium text-slate-700">Amount</th>
@@ -275,9 +441,11 @@ export default function AddBulkSales({ pumpId, employerId, nozzles }: AddBulkSal
                             <tbody className="divide-y divide-slate-100 bg-white">
                                 {creditSales.map((c, i) => (
                                     <tr key={i} className="hover:bg-slate-50">
-                                        <td className="p-3 text-slate-600 font-medium">
-                                            {nozzles.find(n => n._id === c.nozzleId)?.name}
-                                        </td>
+                                        {!isLubeCategory && (
+                                            <td className="p-3 text-slate-600 font-medium">
+                                                {nozzles.find(n => n._id === c.nozzleId)?.name}
+                                            </td>
+                                        )}
                                         <td className="p-3 text-slate-800">{c.name}</td>
                                         <td className="p-3 text-slate-600">{c.phone}</td>
                                         <td className="p-3 text-right font-medium text-slate-800">Rs. {c.amount.toLocaleString()}</td>
@@ -291,7 +459,7 @@ export default function AddBulkSales({ pumpId, employerId, nozzles }: AddBulkSal
                             </tbody>
                             <tfoot className="bg-slate-50 font-semibold border-t border-slate-200">
                                 <tr>
-                                    <td colSpan={3} className="p-3 text-right text-slate-600">Total Credits:</td>
+                                    <td colSpan={isLubeCategory ? 3 : 4} className="p-3 text-right text-slate-600">Total Credits:</td>
                                     <td className="p-3 text-right text-slate-800">Rs. {totalCredits.toLocaleString()}</td>
                                     <td></td>
                                 </tr>
@@ -308,8 +476,8 @@ export default function AddBulkSales({ pumpId, employerId, nozzles }: AddBulkSal
 
             <button
                 onClick={handleSubmit}
-                disabled={loading || !selectedCategory || nozzleCalculations.filter(n => n.isValid).length === 0}
-                className={`w-full py-4 rounded-lg text-white font-bold text-lg shadow-md transition-all ${loading || !selectedCategory || nozzleCalculations.filter(n => n.isValid).length === 0
+                disabled={loading || !selectedCategory || (isLubeCategory ? lubeCalculations.filter(n => n.isValid).length === 0 : nozzleCalculations.filter(n => n.isValid).length === 0)}
+                className={`w-full py-4 rounded-lg text-white font-bold text-lg shadow-md transition-all ${loading || !selectedCategory || (isLubeCategory ? lubeCalculations.filter(n => n.isValid).length === 0 : nozzleCalculations.filter(n => n.isValid).length === 0)
                     ? "bg-slate-300 cursor-not-allowed shadow-none"
                     : "bg-teal-600 hover:bg-teal-700 hover:shadow-lg active:transform active:scale-[0.99]"
                     }`}

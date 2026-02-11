@@ -12,6 +12,10 @@ export interface IStock extends Document {
     notes?: string;
     createdAt: Date;
     updatedAt: Date;
+    lubeCategory?: string;
+    unitVolume?: number;
+    lubeName?: string;
+    unitsQuantity?: number;
 }
 
 const StockSchema: Schema = new Schema({
@@ -62,6 +66,21 @@ const StockSchema: Schema = new Schema({
     notes: {
         type: String,
         trim: true
+    },
+    // New fields for Lubricants
+    lubeCategory: {
+        type: String, // 'Petrol' or 'Diesel'
+        trim: true
+    },
+    unitVolume: {
+        type: Number, // 0.7, 1, 3, 4, 10 etc.
+    },
+    lubeName: {
+        type: String, // 'Blaze', 'Carrient Plus', etc.
+        trim: true
+    },
+    unitsQuantity: {
+        type: Number, // Quantity in packs/gallons
     }
 }, {
     timestamps: true

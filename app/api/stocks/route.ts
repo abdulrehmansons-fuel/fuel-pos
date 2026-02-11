@@ -38,7 +38,13 @@ export async function POST(req: NextRequest) {
             purchasePricePerLiter: Number(body.purchasePricePerLiter),
             salePricePerLiter: Number(body.salePricePerLiter),
             // purchaseDate is already validated as string, model will cast to Date, or we can explicit:
-            purchaseDate: new Date(body.purchaseDate)
+            purchaseDate: new Date(body.purchaseDate),
+
+            // Allow new fields to be passed through
+            lubeCategory: body.lubeCategory,
+            unitVolume: body.unitVolume ? Number(body.unitVolume) : undefined,
+            lubeName: body.lubeName,
+            unitsQuantity: body.unitsQuantity ? Number(body.unitsQuantity) : undefined,
         });
 
         return NextResponse.json(stock, { status: 201 });

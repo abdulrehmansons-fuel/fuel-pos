@@ -22,7 +22,10 @@ import {
   stockEditSchema,
   type StockEditFormData,
   FUEL_TYPES,
-  PAYMENT_TYPES
+  PAYMENT_TYPES,
+  LUBE_CATEGORIES,
+  LUBE_VOLUMES,
+  LUBE_BRANDS
 } from "@/validators/stock";
 import Image from "next/image";
 
@@ -38,6 +41,10 @@ type StockData = {
   notes: string;
   pump: string;
   paymentProofImage?: string;
+  lubeCategory?: string;
+  unitVolume?: number;
+  lubeName?: string;
+  unitsQuantity?: number;
 };
 
 const StockEdit = ({ id }: { id: string }) => {
@@ -52,6 +59,10 @@ const StockEdit = ({ id }: { id: string }) => {
 
   // Image Preview State
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+
+  // Custom Lube Selection States
+  const [isCustomVolume, setIsCustomVolume] = useState(false);
+  const [isCustomBrand, setIsCustomBrand] = useState(false);
 
   const {
     register,
@@ -73,6 +84,10 @@ const StockEdit = ({ id }: { id: string }) => {
       notes: "",
       pump: "",
       paymentProofImage: "",
+      lubeCategory: undefined,
+      unitVolume: undefined,
+      lubeName: undefined,
+      unitsQuantity: undefined,
     },
   });
 
@@ -91,17 +106,46 @@ const StockEdit = ({ id }: { id: string }) => {
           reset({
             fuelType: stockData.fuelType,
             quantity: stockData.quantity.toString(),
-            purchasePricePerLiter: stockData.purchasePricePerLiter.toString(),
-            salePricePerLiter: stockData.salePricePerLiter.toString(),
+            // If Lube, convert Per Liter to Per Gallon for display
+            purchasePricePerLiter: (stockData.fuelType === 'Lubricants' && stockData.unitVolume)
+              ? (stockData.purchasePricePerLiter * stockData.unitVolume).toFixed(2)
+              : stockData.purchasePricePerLiter.toString(),
+            salePricePerLiter: (stockData.fuelType === 'Lubricants' && stockData.unitVolume)
+              ? (stockData.salePricePerLiter * stockData.unitVolume).toFixed(2)
+              : stockData.salePricePerLiter.toString(),
             purchaseDate: stockData.purchaseDate ? new Date(stockData.purchaseDate).toISOString().split('T')[0] : "",
             supplier: stockData.supplier,
             paymentType: stockData.paymentType,
             notes: stockData.notes,
             pump: stockData.pump,
             paymentProofImage: stockData.paymentProofImage || "",
+            // Lube fields
+            lubeCategory: stockData.lubeCategory,
+            unitVolume: stockData.unitVolume,
+            lubeName: stockData.lubeName,
+            unitsQuantity: stockData.unitsQuantity,
           });
           if (stockData.paymentProofImage) {
             setImagePreview(stockData.paymentProofImage);
+          }
+          if (stockData.lubeCategory) {
+            const volumePresets = LUBE_VOLUMES[stockData.lubeCategory as keyof typeof LUBE_VOLUMES] as readonly number[] || [];
+            const isVolPreset = volumePresets.includes(stockData.unitVolume);
+            if (stockData.unitVolume && !isVolPreset) {
+              setIsCustomVolume(true);
+            }
+
+            const brandsMap = LUBE_BRANDS[stockData.lubeCategory as keyof typeof LUBE_BRANDS] as Record<number, readonly string[]> || {};
+            let brandPresets: string[] = [];
+            if (isVolPreset) {
+              brandPresets = (brandsMap[stockData.unitVolume] || []) as string[];
+            } else {
+              brandPresets = Array.from(new Set(Object.values(brandsMap).flat())).sort() as string[];
+            }
+
+            if (stockData.lubeName && !brandPresets.includes(stockData.lubeName)) {
+              setIsCustomBrand(true);
+            }
           }
         } else {
           toast.error("Failed to load stock details");
@@ -124,15 +168,32 @@ const StockEdit = ({ id }: { id: string }) => {
   }, [id, router, reset]);
 
 
+  // Watch fields
+  const fuelType = useWatch({ control, name: "fuelType" });
+  const lubeCategory = useWatch({ control, name: "lubeCategory" });
+  const unitVolume = useWatch({ control, name: "unitVolume" });
+
   // Update total quantity whenever user types in "Add Quantity"
-  // Total = Original Existing + Add Qty
   useEffect(() => {
     if (data) {
       const existing = parseFloat(data.quantity.toString()) || 0;
       const added = parseFloat(addQty) || 0;
-      setValue("quantity", (existing + added).toString());
+
+      let additionalLiters = added;
+      // If Lubricant, input is in Gallons, so convert to Liters
+      if (fuelType === 'Lubricants' && unitVolume) {
+        additionalLiters = added * Number(unitVolume);
+
+        // Also update unitsQuantity (Total Gallons)
+        // existing is Liters.
+        const existingPacks = existing / Number(unitVolume);
+        const totalPacks = existingPacks + added;
+        setValue("unitsQuantity", Number(totalPacks.toFixed(2)));
+      }
+
+      setValue("quantity", (existing + additionalLiters).toFixed(2));
     }
-  }, [addQty, data, setValue]);
+  }, [addQty, data, setValue, fuelType, unitVolume]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -159,20 +220,35 @@ const StockEdit = ({ id }: { id: string }) => {
 
   const totalPurchaseAmount =
     quantity && purchasePricePerLiter && !isNaN(Number(quantity)) && !isNaN(Number(purchasePricePerLiter))
-      ? (parseFloat(quantity) * parseFloat(purchasePricePerLiter)).toFixed(2)
+      ? (fuelType === 'Lubricants' && unitVolume
+        ? (parseFloat(quantity) * (parseFloat(purchasePricePerLiter) / Number(unitVolume))).toFixed(2)
+        : (parseFloat(quantity) * parseFloat(purchasePricePerLiter)).toFixed(2))
       : "0.00";
 
   const totalSaleAmount =
     quantity && salePricePerLiter && !isNaN(Number(quantity)) && !isNaN(Number(salePricePerLiter))
-      ? (parseFloat(quantity) * parseFloat(salePricePerLiter)).toFixed(2)
+      ? (fuelType === 'Lubricants' && unitVolume
+        ? (parseFloat(quantity) * (parseFloat(salePricePerLiter) / Number(unitVolume))).toFixed(2)
+        : (parseFloat(quantity) * parseFloat(salePricePerLiter)).toFixed(2))
       : "0.00";
 
   const onSubmit = async (formData: StockEditFormData) => {
     try {
+      const formattedData = { ...formData };
+
+      // If Lubricant, convert Price Per Gallon -> Price Per Liter
+      if (formattedData.fuelType === 'Lubricants' && formattedData.unitVolume) {
+        const vol = Number(formattedData.unitVolume);
+        if (vol > 0) {
+          formattedData.purchasePricePerLiter = (Number(formData.purchasePricePerLiter) / vol).toFixed(2);
+          formattedData.salePricePerLiter = (Number(formData.salePricePerLiter) / vol).toFixed(2);
+        }
+      }
+
       const res = await fetch(`/api/stocks/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(formattedData),
       });
 
       if (res.ok) {
@@ -190,7 +266,7 @@ const StockEdit = ({ id }: { id: string }) => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-[#f1f5f9]">
+      <div className="flex items-center justify-center p-12">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#14b8a6]"></div>
       </div>
     );
@@ -199,7 +275,7 @@ const StockEdit = ({ id }: { id: string }) => {
   if (!data) return null;
 
   return (
-    <div className="p-6 bg-[#f1f5f9] min-h-screen">
+    <div className="flex flex-col">
       {/* Back Button + Title */}
       <div className="flex items-center gap-3 mb-6">
         <Button
@@ -272,32 +348,202 @@ const StockEdit = ({ id }: { id: string }) => {
                 )}
               </div>
 
+              {/* Lubricant Specific Fields */}
+              {fuelType === 'Lubricants' && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="lubeCategory" className="text-[#020617]">
+                      Lube Category <span className="text-red-500">*</span>
+                    </Label>
+                    <Controller
+                      name="lubeCategory"
+                      control={control}
+                      render={({ field }) => (
+                        <Select onValueChange={(val) => {
+                          field.onChange(val);
+                          setValue("unitVolume", undefined);
+                          setValue("lubeName", undefined);
+                        }} value={field.value}>
+                          <SelectTrigger className="rounded-md">
+                            <SelectValue placeholder="Select category (Petrol/Diesel)" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {LUBE_CATEGORIES.map((cat) => (
+                              <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                    {errors.lubeCategory && (
+                      <p className="text-sm text-red-500">{errors.lubeCategory.message}</p>
+                    )}
+                  </div>
+
+                  {lubeCategory && (
+                    <div className="space-y-2">
+                      <Label htmlFor="unitVolume" className="text-[#020617]">
+                        Volume (Gallon Size) <span className="text-red-500">*</span>
+                      </Label>
+                      <Controller
+                        name="unitVolume"
+                        control={control}
+                        render={({ field }) => {
+                          const presets = LUBE_VOLUMES[lubeCategory as keyof typeof LUBE_VOLUMES] as readonly number[] || [];
+                          return (
+                            <div className="space-y-2">
+                              <Select
+                                onValueChange={(val) => {
+                                  if (val === "other") {
+                                    setIsCustomVolume(true);
+                                    field.onChange(undefined);
+                                    setValue("lubeName", undefined);
+                                  } else {
+                                    setIsCustomVolume(false);
+                                    field.onChange(Number(val));
+                                    setValue("lubeName", undefined);
+                                  }
+                                }}
+                                value={isCustomVolume ? "other" : (field.value?.toString() || "")}
+                              >
+                                <SelectTrigger className="rounded-md">
+                                  <SelectValue placeholder="Select volume" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {presets.map((vol) => (
+                                    <SelectItem key={vol} value={vol.toString()}>{vol} L</SelectItem>
+                                  ))}
+                                  <SelectItem value="other">Other</SelectItem>
+                                </SelectContent>
+                              </Select>
+
+                              {isCustomVolume && (
+                                <Input
+                                  type="number"
+                                  placeholder="Enter custom volume (Liters)"
+                                  onChange={(e) => field.onChange(Number(e.target.value))}
+                                  value={field.value || ""}
+                                  min="0"
+                                  step="0.01"
+                                  className="mt-2"
+                                />
+                              )}
+                            </div>
+                          );
+                        }}
+                      />
+                      {errors.unitVolume && (
+                        <p className="text-sm text-red-500">{errors.unitVolume.message}</p>
+                      )}
+                    </div>
+                  )}
+
+                  {unitVolume && lubeCategory && (
+                    <div className="space-y-2">
+                      <Label htmlFor="lubeName" className="text-[#020617]">
+                        Brand / Type <span className="text-red-500">*</span>
+                      </Label>
+                      <Controller
+                        name="lubeName"
+                        control={control}
+                        render={({ field }) => {
+                          const volKey = Number(unitVolume);
+                          const brandsMapForCategory = LUBE_BRANDS[lubeCategory as keyof typeof LUBE_BRANDS] as Record<number, readonly string[]> || {};
+
+                          const volumePresets = LUBE_VOLUMES[lubeCategory as keyof typeof LUBE_VOLUMES] as readonly number[] || [];
+                          const isVolumePreset = volumePresets.includes(volKey);
+
+                          let presets: string[] = [];
+                          if (isVolumePreset) {
+                            presets = (brandsMapForCategory[volKey] || []) as string[];
+                          } else {
+                            presets = Array.from(new Set(Object.values(brandsMapForCategory).flat())).sort() as string[];
+                          }
+
+                          return (
+                            <div className="space-y-2">
+                              <Select
+                                onValueChange={(val) => {
+                                  if (val === "other") {
+                                    setIsCustomBrand(true);
+                                    field.onChange("");
+                                  } else {
+                                    setIsCustomBrand(false);
+                                    field.onChange(val);
+                                  }
+                                }}
+                                value={isCustomBrand ? "other" : (field.value || "")}
+                              >
+                                <SelectTrigger className="rounded-md">
+                                  <SelectValue placeholder="Select brand" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {presets.map((brand) => (
+                                    <SelectItem key={brand} value={brand}>{brand}</SelectItem>
+                                  ))}
+                                  <SelectItem value="other">Other</SelectItem>
+                                </SelectContent>
+                              </Select>
+
+                              {isCustomBrand && (
+                                <Input
+                                  type="text"
+                                  placeholder="Enter brand / type name"
+                                  onChange={(e) => field.onChange(e.target.value)}
+                                  value={field.value || ""}
+                                  className="mt-2"
+                                />
+                              )}
+                            </div>
+                          );
+                        }}
+                      />
+                      {errors.lubeName && (
+                        <p className="text-sm text-red-500">{errors.lubeName.message}</p>
+                      )}
+                    </div>
+                  )}
+                </>
+              )}
+
               {/* Special Quantity Logic */}
               <div className="space-y-2">
-                <Label className="text-[#020617]">Existing Quantity</Label>
+                <Label className="text-[#020617]">
+                  {fuelType === 'Lubricants' ? 'Existing Quantity (Gallons)' : 'Existing Quantity (Liters)'}
+                </Label>
                 <Input
                   disabled
-                  value={data.quantity}
+                  value={
+                    fuelType === 'Lubricants' && unitVolume
+                      ? (data.quantity / unitVolume).toFixed(2)
+                      : data.quantity
+                  }
                   className="bg-gray-100"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label className="text-[#020617]">Add New Stock (Liters)</Label>
+                <Label className="text-[#020617]">
+                  {fuelType === 'Lubricants' ? 'Add New Stock (Gallons)' : 'Add New Stock (Liters)'}
+                </Label>
                 <Input
                   type="number"
                   min="0"
-                  placeholder="e.g. 500"
+                  placeholder={fuelType === 'Lubricants' ? "e.g. 10 (Gallons)" : "e.g. 500 (Liters)"}
                   value={addQty}
                   onChange={(e) => setAddQty(e.target.value)}
                   className="border-green-300 focus:border-green-500"
                 />
-                <p className="text-xs text-gray-500">Enter amount to ADD to existing stock.</p>
+                <p className="text-xs text-gray-500">
+                  {fuelType === 'Lubricants' && unitVolume
+                    ? `Adding ${(Number(addQty) * Number(unitVolume)).toFixed(2)} Liters to existing stock.`
+                    : "Enter amount to ADD to existing stock."}
+                </p>
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="quantity" className="text-[#020617]">
-                  Total Quantity (Result) <span className="text-red-500">*</span>
+                  {fuelType === 'Lubricants' ? 'Total Quantity (Result in Liters)' : 'Total Quantity (Result)'} <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   id="quantity"
@@ -309,6 +555,11 @@ const StockEdit = ({ id }: { id: string }) => {
                   step="0.01"
                   {...register("quantity")}
                 />
+                {fuelType === 'Lubricants' && unitVolume && quantity && (
+                  <p className="text-xs text-green-600 font-medium mt-1">
+                    Equivalent to {(Number(quantity) / unitVolume).toFixed(2)} Gallons
+                  </p>
+                )}
                 {errors.quantity && (
                   <p className="text-sm text-red-500">{errors.quantity.message}</p>
                 )}
@@ -317,7 +568,7 @@ const StockEdit = ({ id }: { id: string }) => {
               {/* Purchase Price Section */}
               <div className="space-y-2">
                 <Label htmlFor="purchasePricePerLiter" className="text-[#020617]">
-                  Purchase Price Per Liter (Rs.) <span className="text-red-500">*</span>
+                  {fuelType === 'Lubricants' ? 'Purchase Price Per Gallon/Pack (Rs.)' : 'Purchase Price Per Liter (Rs.)'} <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   id="purchasePricePerLiter"
@@ -348,7 +599,7 @@ const StockEdit = ({ id }: { id: string }) => {
               {/* Sale Price Section */}
               <div className="space-y-2">
                 <Label htmlFor="salePricePerLiter" className="text-[#020617]">
-                  Sale Price Per Liter (Rs.) <span className="text-red-500">*</span>
+                  {fuelType === 'Lubricants' ? 'Sale Price Per Gallon (Rs.)' : 'Sale Price Per Liter (Rs.)'} <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   id="salePricePerLiter"
