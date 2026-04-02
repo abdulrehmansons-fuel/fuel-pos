@@ -44,6 +44,11 @@ export async function GET() {
 
         sales.forEach(sale => {
             const scl = sale as Record<string, unknown>;
+            const remainingBalance = Number(scl.grandTotal) - Number(scl.amountPaid);
+            
+            // Only include sales that have a remaining credit balance
+            if (remainingBalance <= 0) return;
+
             const saleId = scl._id ? scl._id.toString().slice(-6).toUpperCase() : "N/A";
             const date = scl.createdAt || new Date();
             const pumpId = scl.pumpId?.toString() || "";
@@ -53,11 +58,22 @@ export async function GET() {
 
             // Check if it's a multiple credit customer sale
             if (scl.creditCustomers && Array.isArray(scl.creditCustomers as []) && (scl.creditCustomers as []).length > 0) {
-                (scl.creditCustomers as Record<string, unknown>[]).forEach((cc) => {
+                const customersArr = scl.creditCustomers as Record<string, unknown>[];
+                
+                // Calculate total original credit from all customers in this sale
+                const totalOriginalCredit = customersArr.reduce((sum, cc) => sum + (Number(cc.amount) || 0), 0);
+
+                customersArr.forEach((cc) => {
                     const custId = cc.customerId?.toString();
                     const custInfo = custId && customerMap[custId] ? customerMap[custId] : { name: "Unknown", phone: "N/A" };
-                    const creditAmt = Number(cc.amount);
-                    if (creditAmt && creditAmt > 0) {
+                    const originalAmt = Number(cc.amount) || 0;
+                    
+                    if (originalAmt > 0) {
+                        // Dynamically scale the remaining balance proportionally to their original credit
+                        const creditAmt = totalOriginalCredit > 0 
+                            ? (originalAmt / totalOriginalCredit) * remainingBalance 
+                            : remainingBalance;
+
                         creditItems.push({
                             saleId,
                             date,
@@ -66,30 +82,27 @@ export async function GET() {
                             customerName: custInfo.name,
                             customerPhone: custInfo.phone,
                             totalSaleAmount,
-                            creditAmount: creditAmt,
+                            creditAmount: Number(creditAmt.toFixed(2)),
                             status
                         });
                     }
                 });
-            } else if (Number(scl.amountPaid) < Number(scl.grandTotal)) {
+            } else {
                 // Single customer with unpaid balance
                 const custId = scl.customerId?.toString();
                 const custInfo = custId && customerMap[custId] ? customerMap[custId] : { name: "Unknown", phone: "N/A" };
-                const remainingBalance = Number(scl.grandTotal) - Number(scl.amountPaid);
-
-                if (remainingBalance > 0) {
-                    creditItems.push({
-                        saleId,
-                        date,
-                        pumpId,
-                        pump: pumpName,
-                        customerName: custInfo.name,
-                        customerPhone: custInfo.phone,
-                        totalSaleAmount,
-                        creditAmount: remainingBalance,
-                        status
-                    });
-                }
+                
+                creditItems.push({
+                    saleId,
+                    date,
+                    pumpId,
+                    pump: pumpName,
+                    customerName: custInfo.name,
+                    customerPhone: custInfo.phone,
+                    totalSaleAmount,
+                    creditAmount: Number(remainingBalance.toFixed(2)),
+                    status
+                });
             }
         });
 
