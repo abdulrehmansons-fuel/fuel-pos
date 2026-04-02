@@ -18,13 +18,14 @@ import { EmployerReport } from "./EmployerReport";
 import { PumpsReport } from "./PumpsReport";
 import { ExpenseReport } from "./ExpenseReport";
 import { StocksReport } from "./StocksReport";
+import { CreditsReport } from "./CreditsReport";
 import { ReportData } from "./types";
 
 export default function ReportsMainPage() {
     const [selectedPump, setSelectedPump] = useState<string>("all");
     const [fromDate, setFromDate] = useState<Date | undefined>(undefined);
     const [toDate, setToDate] = useState<Date | undefined>(undefined);
-    const [rawData, setRawData] = useState<ReportData>({ sales: [], employers: [], pumps: [], expenses: [], stocks: [] });
+    const [rawData, setRawData] = useState<ReportData>({ sales: [], employers: [], pumps: [], expenses: [], stocks: [], credits: [] });
     const [isLoading, setIsLoading] = useState(true);
     const [pumpsList, setPumpsList] = useState<string[]>([]);
 
@@ -32,20 +33,22 @@ export default function ReportsMainPage() {
         const fetchData = async () => {
             setIsLoading(true);
             try {
-                const [salesRes, employersRes, pumpsRes, expensesRes, stocksRes] = await Promise.all([
+                const [salesRes, employersRes, pumpsRes, expensesRes, stocksRes, creditsRes] = await Promise.all([
                     fetch("/api/sales"),
                     fetch("/api/employers"),
                     fetch("/api/fuel-pumps"),
                     fetch("/api/expenses"),
                     fetch("/api/stocks"),
+                    fetch("/api/reports/credits"),
                 ]);
 
-                const [sales, employers, pumps, expenses, stocks] = await Promise.all([
+                const [sales, employers, pumps, expenses, stocks, credits] = await Promise.all([
                     salesRes.json(),
                     employersRes.json(),
                     pumpsRes.json(),
                     expensesRes.json(),
                     stocksRes.json(),
+                    creditsRes.json(),
                 ]);
 
                 // Map Stocks
@@ -140,6 +143,7 @@ export default function ReportsMainPage() {
                     pumps: mappedPumps,
                     expenses: mappedExpenses,
                     stocks: mappedStocks,
+                    credits: Array.isArray(credits) ? credits : [],
                 });
 
                 if (Array.isArray(pumps)) {
@@ -176,6 +180,7 @@ export default function ReportsMainPage() {
             pumps: selectedPump === "all" ? rawData.pumps : rawData.pumps.filter((p) => p.pumpId === selectedPump || p.location === selectedPump),
             expenses: filterByPumpAndDate(rawData.expenses),
             stocks: selectedPump === "all" ? rawData.stocks : rawData.stocks.filter((s) => s.pumpId === selectedPump || s.location === selectedPump),
+            credits: filterByPumpAndDate(rawData.credits),
         };
     };
 
@@ -294,6 +299,7 @@ export default function ReportsMainPage() {
                     <TabsTrigger value="pumps">Pumps</TabsTrigger>
                     <TabsTrigger value="expense">Expense</TabsTrigger>
                     <TabsTrigger value="stocks">Stocks</TabsTrigger>
+                    <TabsTrigger value="credits">Credits</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="overview">
@@ -328,6 +334,10 @@ export default function ReportsMainPage() {
 
                 <TabsContent value="stocks">
                     <StocksReport stocksData={filteredData.stocks} />
+                </TabsContent>
+
+                <TabsContent value="credits">
+                    <CreditsReport creditsData={filteredData.credits} />
                 </TabsContent>
             </Tabs>
         </div>

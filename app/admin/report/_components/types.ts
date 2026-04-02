@@ -53,10 +53,23 @@ export interface StockItem {
     pumpId: string;
 }
 
+export interface CreditItem {
+    saleId: string;
+    date: string;
+    pumpId: string;
+    pump: string;
+    customerName: string;
+    customerPhone: string;
+    totalSaleAmount: number;
+    creditAmount: number;
+    status: string;
+}
+
 export interface ReportData {
     sales: SalesItem[];
     employers: EmployerItem[];
     pumps: PumpItem[];
     expenses: ExpenseItem[];
     stocks: StockItem[];
+    credits: CreditItem[];
 }
